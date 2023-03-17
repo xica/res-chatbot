@@ -33,6 +33,7 @@ GEM
       rack
     redis-client (0.14.0)
       connection_pool
+    rr (3.1.0)
     ruby-openai (3.5.0)
       httparty (>= 0.18.1)
     ruby2_keywords (0.0.5)
@@ -54,6 +55,9 @@ GEM
       hashie
     test-unit (3.5.7)
       power_assert
+    test-unit-rr (1.0.5)
+      rr (>= 1.1.1)
+      test-unit (>= 2.5.2)
     tilt (2.1.0)
 
 PLATFORMS
@@ -70,6 +74,7 @@ DEPENDENCIES
   sinatra
   slack-ruby-client
   test-unit
+  test-unit-rr
 
 BUNDLED WITH
    2.3.9

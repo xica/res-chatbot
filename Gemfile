@@ -11,4 +11,5 @@ gem "slack-ruby-client"
 
 group :test do
   gem "test-unit"
+  gem "test-unit-rr"
 end
