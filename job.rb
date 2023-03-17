@@ -19,11 +19,12 @@ class ChatGPTJob
   include Sidekiq::Job
 
   def perform(params)
-    slack_client = Slack::Web::Client.new
     channel = params["channel"]
     user = params["user"]
     message = params["message"]
     response = "<@#{user}> Received: #{message.inspect} from #{channel} channel"
-    client.chat_postMessage(channel: channel, text: response)
+
+    slack_client = Slack::Web::Client.new
+    slack_client.chat_postMessage(channel: channel, text: response)
   end
 end
