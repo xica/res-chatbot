@@ -31,6 +31,7 @@ post "/slack/events" do
       channel = event["channel"]
 
       if allowed_channel?(channel)
+        logger.info "event: #{event.inspect}"
         logger.info "#{channel}: #{message}"
         case message
         when /^@chatgpt\s+/
