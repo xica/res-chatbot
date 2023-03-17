@@ -25,7 +25,7 @@ GEM
     redis-client (0.14.0)
       connection_pool
     ruby2_keywords (0.0.5)
-    sidekiq (7.0.7)
+    sidekiq (7.0.6)
       concurrent-ruby (< 2)
       connection_pool (>= 2.3.0)
       rack (>= 2.2.4)
@@ -35,17 +35,13 @@ GEM
       rack (~> 2.2, >= 2.2.4)
       rack-protection (= 3.0.5)
       tilt (~> 2.0)
-    slack-ruby-client (2.0.0)
+    slack-ruby-client (2.1.0)
       faraday (>= 2.0)
       faraday-mashify
       faraday-multipart
       gli
       hashie
-      websocket-driver
     tilt (2.1.0)
-    websocket-driver (0.7.5)
-      websocket-extensions (>= 0.1.0)
-    websocket-extensions (0.1.5)
 
 PLATFORMS
   arm64-darwin-21
@@ -54,7 +50,7 @@ PLATFORMS
 DEPENDENCIES
   json
   pg
-  sidekiq (~> 7)
+  sidekiq (= 7.0.6)
   sinatra
   slack-ruby-client
 
