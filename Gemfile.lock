@@ -25,6 +25,7 @@ GEM
       ruby2_keywords (~> 0.0.1)
     nio4r (2.5.8)
     pg (1.4.6)
+    power_assert (2.0.3)
     puma (6.1.1)
       nio4r (~> 2.0)
     rack (2.2.6.4)
@@ -51,6 +52,8 @@ GEM
       faraday-multipart
       gli
       hashie
+    test-unit (3.5.7)
+      power_assert
     tilt (2.1.0)
 
 PLATFORMS
@@ -66,6 +69,7 @@ DEPENDENCIES
   sidekiq (~> 7)
   sinatra
   slack-ruby-client
+  test-unit
 
 BUNDLED WITH
    2.3.9
