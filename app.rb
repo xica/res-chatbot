@@ -17,7 +17,7 @@ end
 logger = Logger.new(STDOUT)
 
 slack_client = Slack::Web::Client.new
-bot_info = client.auth_test
+bot_info = slack_client.auth_test
 bot_id = bot_info["user_id"]
 logger.info "bot_id = #{bot_id}"
 
