@@ -7,16 +7,18 @@ OpenAI.configure do |config|
   config.organization_id = org_id if org_id
 end
 
-def chat_completion(message)
-  client = OpenAI::Client.new
-  response = client.chat(
-    parameters: {
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "user", content: message }
-      ],
-      temperature: 0.7
-    }
-  )
-  response.dig("choices", 0, "message", "content")
+module ChatGPT
+  module_function def chat_completion(message)
+    client = OpenAI::Client.new
+    response = client.chat(
+      parameters: {
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "user", content: message }
+        ],
+        temperature: 0.7
+      }
+    )
+    response.dig("choices", 0, "message", "content")
+  end
 end
