@@ -1,7 +1,7 @@
 require "sidekiq"
 require "slack-ruby-client"
 
-redis_config = { url: 'redis://localhost:6379' }
+redis_config = { url: ENV.fetch("REDIS_URL", "redis://localhost:6379") }
 
 Sidekiq.configure_server do |config|
   config.redis = redis_config
