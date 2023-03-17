@@ -41,7 +41,7 @@ post "/slack/events" do
         logger.info "#{channel}: #{message}"
         case message
         when /^<@#{bot_id}>\s+/
-          message_body = Regexp.post_match
+          message_body = Regexp.last_match.post_match
           ChatGPTJob.perform_async({
             "channel" => channel,
             "user" => user,
