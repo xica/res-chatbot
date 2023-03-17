@@ -1,14 +1,14 @@
 services:
   - type: redis
     name: sidekiq-redis
-    region: singapore
+    region: oregon
     maxmemoryPolicy: noeviction
     ipAllowList: []
 
   - type: worker
     name: sidekiq-worker
     env: ruby
-    region: singapore
+    region: oregon
     buildCommand: bundle install
     startCommand: bundle exec sidekiq -r job.rb
     autoDeploy: false
@@ -22,7 +22,7 @@ services:
   - type: web
     name: sinatra-web
     env: ruby
-    region: singapore
+    region: oregon
     buildCommand: bundle install
     startCommand: bundle exec ruby app.rb
     envVars:
