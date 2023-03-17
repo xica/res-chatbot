@@ -16,6 +16,14 @@ end
 
 logger = Logger.new(STDOUT)
 
+Sidekiq.configure_client do |config|
+  config.logger = logger
+end
+
+if ENV["APP_ENV"] == "test"
+  logger.level = Logger::WARN
+end
+
 def get_bot_id
   if ENV["APP_ENV"] == "test"
     "TEST_BOT_ID"
