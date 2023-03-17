@@ -1,0 +1,33 @@
+services:
+  - type: redis
+    name: sidekiq-redis
+    region: singapore
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
+
+  - type: worker
+    name: sidekiq-worker
+    env: ruby
+    rlegion: singapore
+    buildCommand: bundle install
+    startCommand: bundle exec sidekiq -r job.rb
+    autoDeploy: false
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: sidekiq-redis
+          property: connectionString
+
+  - type: web
+    name: sinatra-web
+    env: ruby
+    region: singapore
+    buildCommand: bundle install
+    startCommand: bundle exec ruby app.rb
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: sidekiq-redis
+          property: connectionString
