@@ -1,5 +1,6 @@
 require "sinatra"
 require "json"
+require "logger"
 
 require_relative "job"
 
@@ -12,6 +13,8 @@ def allowed_channel?(channel)
     ALLOW_CHANNEL_IDS.include?(channel)
   end
 end
+
+logger = Logger.new(STDOUT)
 
 post "/slack/events" do
   request_data = JSON.parse(request.body.read)
@@ -28,6 +31,7 @@ post "/slack/events" do
       channel = event["channel"]
 
       if allowed_channel?(channel)
+        logger.info "#{channel}: #{message}"
         case message
         when /^@chatgpt\s+/
           ChatGPTJob.perform_async({"channel" => channel, "message" => message})
