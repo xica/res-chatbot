@@ -1,6 +1,8 @@
 require "sidekiq"
 require "slack-ruby-client"
 
+require_relative "chat-gpt"
+
 redis_config = { url: ENV.fetch("REDIS_URL", "redis://localhost:6379") }
 
 Sidekiq.configure_server do |config|
@@ -22,7 +24,10 @@ class ChatGPTJob
     channel = params["channel"]
     user = params["user"]
     message = params["message"]
-    response = "<@#{user}> Received: #{message.inspect} from #{channel} channel"
+
+    answer = ChatGPT.chat_completion(message)
+
+    response = "<@#{user}> #{answer}"
 
     slack_client = Slack::Web::Client.new
     slack_client.chat_postMessage(channel: channel, text: response)
