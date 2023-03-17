@@ -34,13 +34,19 @@ post "/slack/events" do
     if event["type"] == "app_mention"
       message = event["text"]
       channel = event["channel"]
+      user = event["user"]
 
       if allowed_channel?(channel)
         logger.info "event: #{event.inspect}"
         logger.info "#{channel}: #{message}"
         case message
-        when /^@chatgpt\s+/
-          ChatGPTJob.perform_async({"channel" => channel, "message" => message})
+        when /^<@#{bot_id}>\s+/
+          message_body = Regexp.post_match
+          ChatGPTJob.perform_async({
+            "channel" => channel,
+            "user" => user,
+            "message" => message_body
+          })
         end
       end
     end

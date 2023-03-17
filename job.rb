@@ -21,8 +21,9 @@ class ChatGPTJob
   def perform(params)
     slack_client = Slack::Web::Client.new
     channel = params["channel"]
+    user = params["user"]
     message = params["message"]
-    response = "Received: #{message.inspect} from #{channel} channel"
+    response = "<@#{user}> Received: #{message.inspect} from #{channel} channel"
     client.chat_postMessage(channel: channel, text: response)
   end
 end
