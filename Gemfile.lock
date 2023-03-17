@@ -50,7 +50,8 @@ PLATFORMS
 DEPENDENCIES
   json
   pg
-  sidekiq (= 7.0.6)
+  rack
+  sidekiq (~> 7)
   sinatra
   slack-ruby-client
 
