@@ -8,7 +8,7 @@ services:
   - type: worker
     name: sidekiq-worker
     env: ruby
-    rlegion: singapore
+    region: singapore
     buildCommand: bundle install
     startCommand: bundle exec sidekiq -r job.rb
     autoDeploy: false
