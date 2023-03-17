@@ -6,7 +6,7 @@ services:
     ipAllowList: []
 
   - type: worker
-    name: sidekiq-worker
+    name: chatbot-worker
     env: ruby
     region: oregon
     buildCommand: bundle install
@@ -20,7 +20,7 @@ services:
           property: connectionString
 
   - type: web
-    name: sinatra-web
+    name: chatbot-web
     env: ruby
     region: oregon
     buildCommand: bundle install
