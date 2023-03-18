@@ -70,3 +70,38 @@ post "/slack/events" do
     status 200
   end
 end
+
+post "/slack/commands/translate/:lang" do |lang|
+  # {
+  #   "token"=>"ois000000000000000000000",
+  #   "team_id"=>"Txxxxxxxx",
+  #   "team_domain"=>"mrkn",
+  #   "channel_id"=>"Cxxxxxxxx",
+  #   "channel_name"=>"random",
+  #   "user_id"=>"Uxxxxxxxx",
+  #   "user_name"=>"mrkn",
+  #   "command"=>"/en",
+  #   "text"=>"テストメッセージ",
+  #   "api_app_id"=>"Axxxxxxxxxx",
+  #   "is_enterprise_install"=>"false",
+  #   "response_url"=>"https://hooks.slack.com/commands/Txxxxxxxx/4965584791638/xNA2z34Sb2RFpdcyjdIPwAz8",
+  #   "trigger_id"=>"4957655817255.3234696253.bd659928b27b1da507f82fce3284fc43",
+  #   "lang"=>"en"
+  # }
+  channel_id, user_id, text, lang = params.values_at("channel_id", "user_id", "text", "lang")
+
+  if TranslateJob.lang_available?(lang)
+    TranslateJob.perform_async({
+      "channel" => channel_id,
+      "user" => user_id,
+      "lang" => lang,
+      "text" => text
+    })
+
+    target_language = TranslateJob::TARGET_LANGUAGES[lang]
+    quoted_text = text.each_line.map {|l| "> #{l}" }.join("")
+    "Translating the following text to #{target_language}...\n#{quoted_text}"
+  else
+    "ERROR: Unsupported language code `#{lang}`"
+  end
+end
