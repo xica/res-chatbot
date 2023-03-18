@@ -30,12 +30,12 @@ def get_bot_id
   else
     slack_client = Slack::Web::Client.new
     bot_info = slack_client.auth_test
-    bot_id = bot_info["user_id"]
-    logger.info "bot_id = #{bot_id}"
+    bot_info["user_id"]
   end
 end
 
 bot_id = get_bot_id
+logger.info "bot_id = #{bot_id}"
 
 post "/slack/events" do
   request_data = JSON.parse(request.body.read)
