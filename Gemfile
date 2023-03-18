@@ -10,6 +10,7 @@ gem "sinatra"
 gem "slack-ruby-client"
 
 group :test do
+  gem "rack-test"
   gem "test-unit"
   gem "test-unit-rr"
   gem "webmock"
