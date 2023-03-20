@@ -7,6 +7,7 @@ gem "rack"
 gem "ruby-openai"
 gem "sidekiq", "~> 7"
 gem "sinatra"
+gem "sinatra-contrib"
 gem "slack-ruby-client"
 
 group :test do

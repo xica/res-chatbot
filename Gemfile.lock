@@ -24,6 +24,7 @@ GEM
       multi_xml (>= 0.5.2)
     json (2.6.3)
     mini_mime (1.1.2)
+    multi_json (1.15.0)
     multi_xml (0.6.0)
     multipart-post (2.3.0)
     mustermann (3.0.0)
@@ -56,6 +57,12 @@ GEM
       rack (~> 2.2, >= 2.2.4)
       rack-protection (= 3.0.5)
       tilt (~> 2.0)
+    sinatra-contrib (3.0.5)
+      multi_json
+      mustermann (~> 3.0)
+      rack-protection (= 3.0.5)
+      sinatra (= 3.0.5)
+      tilt (~> 2.0)
     slack-ruby-client (2.1.0)
       faraday (>= 2.0)
       faraday-mashify
@@ -86,6 +93,7 @@ DEPENDENCIES
   ruby-openai
   sidekiq (~> 7)
   sinatra
+  sinatra-contrib
   slack-ruby-client
   test-unit
   test-unit-rr
