@@ -36,7 +36,7 @@ class TranslateJob < ChatGPTJob
     query = TranslateJob.format_query(lang, text)
     return unless query
 
-    response = Utils.chat_completion(query)
+    response = Utils.chat_completion({"role" => "user", "content" => query})
     response_content = response.dig("choices", 0, "message", "content")
 
     source_language, translation = extract_answer(response_content)

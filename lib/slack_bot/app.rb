@@ -1,6 +1,8 @@
 require "json"
 require "logger"
+
 require "sinatra/base"
+require 'sinatra/custom_logger'
 
 require "slack_bot/jobs"
 
@@ -15,21 +17,20 @@ def allowed_channel?(channel)
 end
 
 module SlackBot
-  @logger = Logger.new(STDOUT)
-
-  def self.logger
-    @logger
-  end
-
-  Sidekiq.configure_client do |config|
-    config.logger = logger
-  end
-
-  if ENV["APP_ENV"] == "test"
-    logger.level = Logger::WARN
-  end
-
   class Application < Sinatra::Base
+    helpers Sinatra::CustomLogger
+
+    configure :development, :production do
+      logger = Logger.new(STDERR)
+      logger.level = Logger::WARN if test?
+      logger.level = Logger::DEBUG if development?
+      set :logger, logger
+    end
+
+    Sidekiq.configure_client do |config|
+      config.logger = logger
+    end
+
     private_class_method def self.get_bot_id
       if ENV["APP_ENV"] == "test"
         "TEST_BOT_ID"
@@ -41,7 +42,7 @@ module SlackBot
     end
 
     bot_id = get_bot_id
-    SlackBot.logger.info "bot_id = #{bot_id}"
+    logger.info "bot_id = #{bot_id}"
 
     post "/slack/events" do
       request_data = JSON.parse(request.body.read)
@@ -110,6 +111,24 @@ module SlackBot
       else
         "ERROR: Unsupported language code `#{lang}`"
       end
+    end
+
+    post "/slack/interaction" do
+      payload = JSON.load(params["payload"])
+      payload_json = JSON.generate(payload, indent: "  ", space: " ", object_nl: "\n", array_nl: "\n")
+      logger.info "Payload:\n" + payload_json.each_line.map {|l| "> #{l}" }.join("")
+
+      # response_url = payload["response_url"]
+      # response = Faraday.post(response_url) do |request|
+      #   request.headers = {
+      #     "Content-Type" => "application/json",
+      #   }
+      #   request.body = {
+      #     text: "Interaction has been received"
+      #   }.to_json
+      # end
+
+      status 200
     end
   end
 end
