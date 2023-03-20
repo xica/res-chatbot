@@ -7,5 +7,4 @@ require "sidekiq/testing"
 require "test/unit/rr"
 require "webmock/test_unit"
 
-require "app"
-require "job"
+require "slack_bot/app"

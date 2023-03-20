@@ -10,7 +10,7 @@ class TestChatGPTJob < Test::Unit::TestCase
       stub_request(:post, "https://slack.com/api/chat.postMessage")
 
       assert_rr do
-        mock(ChatGPT).chat_completion(query) { answer }
+        mock(Utils).chat_completion(query) { {"choices" => [{"message" => {"content" => answer}}]} }
         Sidekiq::Testing.inline! do
           ChatGPTJob.perform_async({
             "channel" => channel_id,

@@ -2,7 +2,7 @@ class TestApplication < Test::Unit::TestCase
   include Rack::Test::Methods
 
   def app
-    Sinatra::Application
+    SlackBot::Application
   end
 
   sub_test_case("POST /slack/events") do
@@ -15,7 +15,7 @@ class TestApplication < Test::Unit::TestCase
         answer = "ABC"
         expected_response = "<@#{user_id}> #{answer}"
 
-        stub(ChatGPT).chat_completion(query_body) { answer }
+        stub(Utils).chat_completion(query_body) { {"choices" => [{"message" => {"content" => answer}}]} }
         stub_request(:post, "https://slack.com/api/chat.postMessage")
 
         Sidekiq::Testing.inline! do
@@ -79,7 +79,7 @@ class TestApplication < Test::Unit::TestCase
       END_RESPONSE
 
       query = TranslateJob.send(:format_query, "ja", query_body)
-      stub(ChatGPT).chat_completion(query) { answer }
+      stub(Utils).chat_completion(query) { {"choices" => [{"message" => {"content" => answer}}]} }
       stub_request(:post, "https://slack.com/api/chat.postMessage")
 
       Sidekiq::Testing.inline! do

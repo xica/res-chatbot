@@ -1,42 +1,6 @@
-require "sidekiq"
-require "slack-ruby-client"
+require_relative "chat_gpt_job"
 
-require_relative "chat-gpt"
-
-redis_config = { url: ENV.fetch("REDIS_URL", "redis://localhost:6379") }
-
-Sidekiq.configure_server do |config|
-  config.redis = redis_config
-end
-
-Sidekiq.configure_client do |config|
-  config.redis = redis_config
-end
-
-Slack.configure do |config|
-  config.token = ENV["SLACK_BOT_TOKEN"]
-end
-
-class ChatGPTJob
-  include Sidekiq::Job
-
-  def perform(params)
-    channel = params["channel"]
-    user = params["user"]
-    message = params["message"]
-
-    answer = ChatGPT.chat_completion(message)
-
-    response = "<@#{user}> #{answer}"
-
-    slack_client = Slack::Web::Client.new
-    slack_client.chat_postMessage(channel: channel, text: response)
-  end
-end
-
-class TranslateJob
-  include Sidekiq::Job
-
+class TranslateJob < ChatGPTJob
   TARGET_LANGUAGES = {
     "en" => "English",
     "ja" => "Japanese"
@@ -72,11 +36,12 @@ class TranslateJob
     query = TranslateJob.format_query(lang, text)
     return unless query
 
-    answer = ChatGPT.chat_completion(query)
+    response = Utils.chat_completion(query)
+    response_content = response.dig("choices", 0, "message", "content")
 
-    source_language, translation = extract_answer(answer)
+    source_language, translation = extract_answer(response_content)
     target_language = TARGET_LANGUAGES[lang]
-    response = <<~END_RESPONSE
+    answer = <<~END_RESPONSE
       <@#{user}>
       Original (#{source_language}):
       #{quote(text)}
@@ -85,8 +50,7 @@ class TranslateJob
       #{quote(*translation)}
     END_RESPONSE
 
-    slack_client = Slack::Web::Client.new
-    slack_client.chat_postMessage(channel: channel, text: response)
+    Utils.post_message(channel: channel, text: answer)
   end
 
   private
