@@ -27,6 +27,10 @@ module SlackBot
       set :logger, logger
     end
 
+    configure :test do
+      set :logger, Rack::NullLogger.new(self)
+    end
+
     Sidekiq.configure_client do |config|
       config.logger = logger
     end

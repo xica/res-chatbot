@@ -33,10 +33,27 @@ class ChatGPTJob
     # end
 
     response = Utils.chat_completion(*messages)
+    logger.info "Chat Response:\n" + response.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
 
+    # {"id"=>"chatcmpl-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    #  "object"=>"chat.completion",
+    #  "created"=>1679624074,
+    #  "model"=>"gpt-3.5-turbo-0301",
+    #  "usage"=>{"prompt_tokens"=>73, "completion_tokens"=>77, "total_tokens"=>150},
+    #  "choices"=>
+    #   [{"message"=>
+    #      {"role"=>"assistant",
+    #       "content"=>
+    #        "はい、正しいです。ChatGPTはオープンAIによってトレーニングされた大規模な言語モデルであり、インターネットから情報を取得することができます。現在の日付は2023年3月24日です。"},
+    #     "finish_reason"=>"stop",
+    #     "index"=>0}]}
+
+    model = response["model"]
+    prompt_tokens = response.dig("usage", "prompt_tokens")
+    completion_tokens = response.dig("usage", "completion_tokens")
     response_content = response.dig("choices", 0, "message", "content")
     answer = "<@#{user}> #{response_content}"
-    post_params = SlackBot.format_chat_gpt_response(answer)
+    post_params = SlackBot.format_chat_gpt_response(answer, prompt_tokens: prompt_tokens, completion_tokens: completion_tokens, model: model)
 
     posted_message = Utils.post_message(channel: channel, **post_params)
     logger.info posted_message.inspect
