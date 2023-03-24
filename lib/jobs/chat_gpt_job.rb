@@ -16,8 +16,8 @@ class ChatGPTJob
     channel = params["channel"]
     user = params["user"]
     query_body = params["message"]
-    # query_ts = params["ts"]
-    # thread_ts = params["thread_ts"] || query_ts
+    query_ts = params["ts"]
+    thread_ts = params["thread_ts"] || query_ts
 
     # TODO: construct the prompt when the first query in a conversation
     #
@@ -51,11 +51,11 @@ class ChatGPTJob
     model = response["model"]
     prompt_tokens = response.dig("usage", "prompt_tokens")
     completion_tokens = response.dig("usage", "completion_tokens")
-    response_content = response.dig("choices", 0, "message", "content")
+    response_content = response.dig("choices", 0, "message", "content").strip
     answer = "<@#{user}> #{response_content}"
     post_params = SlackBot.format_chat_gpt_response(answer, prompt_tokens: prompt_tokens, completion_tokens: completion_tokens, model: model)
 
-    posted_message = Utils.post_message(channel: channel, **post_params)
+    posted_message = Utils.post_message(channel: channel, thread_ts: thread_ts, **post_params)
     logger.info posted_message.inspect
 
     # TODO: save data
