@@ -10,8 +10,13 @@ module Utils
     )
   end
 
-  module_function def post_message(channel:, **params)
+  module_function def post_message(channel:, text:, **params)
     slack_client = Slack::Web::Client.new
-    slack_client.chat_postMessage(channel: channel, **params)
+    slack_client.chat_postMessage(channel: channel, text: text, **params)
+  end
+
+  module_function def post_ephemeral(channel:, user:, text:, **params)
+    slack_client = Slack::Web::Client.new
+    slack_client.chat_postEphemeral(channel: channel, user: user, text: text, **params)
   end
 end

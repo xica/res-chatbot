@@ -16,6 +16,10 @@ def allowed_channel?(channel)
   end
 end
 
+def thread_context_prohibited?(channel)
+  true
+end
+
 module SlackBot
   class Application < Sinatra::Base
     helpers Sinatra::CustomLogger
@@ -108,17 +112,37 @@ module SlackBot
           if allowed_channel?(channel)
             logger.info "Event:\n" + event.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
             logger.info "#{channel}: #{message}"
-            case message
-            when /^<@#{bot_id}>\s+/
-              message_body = Regexp.last_match.post_match
-              job_params = {
-                "channel" => channel,
-                "user" => user,
-                "ts" => ts,
-                "message" => message_body,
-              }
-              params["thread_ts"] = thread_ts if thread_ts
-              ChatGPTJob.perform_async(job_params)
+
+            if thread_ts && thread_context_prohibited?(channel)
+              response = "Sorry, we can't continue the conversation within threads on this channel! Please mention me outside threads."
+              Utils.post_ephemeral(
+                channel: channel,
+                user: user,
+                thread_ts: ts,
+                text: response,
+                blocks: [
+                  {
+                    type: "section",
+                    text: {
+                      type: "mrkdwn",
+                      text: "*#{response}*"
+                    }
+                  }
+                ]
+              )
+            else
+              case message
+              when /^<@#{bot_id}>\s+/
+                message_body = Regexp.last_match.post_match
+                job_params = {
+                  "channel" => channel,
+                  "user" => user,
+                  "ts" => ts,
+                  "message" => message_body,
+                }
+                params["thread_ts"] = thread_ts if thread_ts
+                ChatGPTJob.perform_async(job_params)
+              end
             end
           end
         end
