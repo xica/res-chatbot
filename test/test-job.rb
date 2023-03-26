@@ -1,4 +1,6 @@
 class TestChatGPTJob < Test::Unit::TestCase
+  include TestHelper
+
   sub_test_case("ChatGPTJob.perform") do
     def test_normal_case
       channel_id = "XXX"
@@ -10,7 +12,31 @@ class TestChatGPTJob < Test::Unit::TestCase
       stub_request(:post, "https://slack.com/api/chat.postMessage")
 
       assert_rr do
-        mock(Utils).chat_completion(query) { {"choices" => [{"message" => {"content" => answer}}]} }
+        mock(Utils).chat_completion({
+          role: "user",
+          content: [
+            "You are ChatGPT, a large language model trained by OpenAI.",
+            "Answer as concisely as possible.",
+            "Current date: #{Time.now.strftime("%Y-%m-%d")}",
+            "\n",
+            query
+          ].join("\n")
+        }) do
+          {
+            "model" => "gpt-3.5-turbo-0301",
+            "usage" => {
+              "prompt_tokens" => 70,
+              "completion_tokens" => 50,
+              "total_tokens" => 120
+            },
+            "choices" => [
+              {
+                "message" => {"content" => answer}
+              }
+            ]
+          }
+        end
+
         Sidekiq::Testing.inline! do
           ChatGPTJob.perform_async({
             "channel" => channel_id,
@@ -20,9 +46,34 @@ class TestChatGPTJob < Test::Unit::TestCase
         end
       end
 
-      assert_requested(:post, "https://slack.com/api/chat.postMessage",
-                       body: {"channel" => channel_id,
-                              "text" => expected_response})
+      actual_body = nil
+      assert_requested(
+        :post, "https://slack.com/api/chat.postMessage",
+        headers: {
+          "Content-Type" => "application/x-www-form-urlencoded"
+        }
+      ) do |request|
+        actual_body = decode_slack_client_request_body(request.body)
+      end
+
+      assert_equal(
+        {
+          "channel" => channel_id,
+          "text" => expected_response,
+          "blocks" => [
+            {
+              "type" => "section",
+              "text" => {
+                "type" => "mrkdwn",
+                "text" => expected_response
+              }
+            },
+            api_usage_block(70, 50, "gpt-3.5-turbo-0301"),
+            feedback_action_block
+          ]
+        },
+        actual_body
+      )
     end
   end
 end

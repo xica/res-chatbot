@@ -74,6 +74,6 @@ class ChatGPTJob
     #{query_body}
     END_MESSAGE
     content.gsub!('{current_date}', Time.now.strftime("%Y-%m-%d"))
-    [{"role" => "user", "content": content.strip}]
+    [{role: "user", content: content.strip}]
   end
 end
