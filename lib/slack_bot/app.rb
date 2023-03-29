@@ -40,6 +40,18 @@ module SlackBot
       true
     end
 
+    before "/events" do
+      Slack::Events::Request.new(request).verify!
+    end
+
+    error Slack::Events::Request::MissingSigningSecret do
+      status 500
+    end
+
+    error Slack::Events::Request::InvalidSignature do
+      status 400
+    end
+
     post "/events" do
       request_data = JSON.parse(request.body.read)
 

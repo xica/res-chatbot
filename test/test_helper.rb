@@ -2,8 +2,10 @@ ENV["RAILS_ENV"] ||= "test"
 ENV["APP_ENV"] ||= "test"
 ENV["OPENAI_ACCESS_TOKEN"] = "test-openai"
 ENV["SLACK_BOT_TOKEN"] = "test-slack-bot-token"
+ENV["SLACK_SIGNING_SECRET"] = "3d3dbfb61ac7935eefb4b4d8f5aaf930"
 
 require_relative "../config/environment"
+require "openssl"
 require "rails/test_help"
 require "rr"
 require "sidekiq/testing"
@@ -72,6 +74,22 @@ class ActiveSupport::TestCase
           }
         ]
       }
+    end
+
+    def compute_request_signature(timestamp, body, version="v0")
+      secret = ENV["SLACK_SIGNING_SECRET"]
+
+      signature_basestring = [version, timestamp, body].join(":")
+      hex_digest = OpenSSL::HMAC.hexdigest("sha256", secret, signature_basestring)
+      [version, hex_digest].join("=")
+    end
+
+    def with_env(new_env)
+      save = ENV.to_hash
+      ENV.update(new_env)
+      yield
+    ensure
+      ENV.replace(save)
     end
   end
 end

@@ -1,3 +1,5 @@
+require "openssl"
+
 module SlackBot
   PROMPT_PRICE_USD = {
     "gpt-3.5-turbo-0301" => 0.002r / 1000,

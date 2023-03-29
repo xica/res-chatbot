@@ -37,17 +37,23 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
     stub_request(:post, "https://slack.com/api/chat.postMessage")
 
     assert_enqueued_with(job: ChatCompletionJob) do
-      post "/slack/events",
-           params: {
-             type: "event_callback",
-             event: {
-               type: "app_mention",
-               text: query,
-               channel: channel_id,
-               user: user_id
-             }
-           },
-           as: :json
+      timestamp = Time.now.to_i
+      params = {
+        type: "event_callback",
+        event: {
+          type: "app_mention",
+          text: query,
+          channel: channel_id,
+          user: user_id
+        }
+      }
+      request_body = ActionDispatch::RequestEncoder.encoder(:json).encode_params(params)
+      headers = {
+        "X-Slack-Request-Timestamp": timestamp,
+        "X-Slack-Signature": compute_request_signature(timestamp, request_body)
+      }
+
+      post "/slack/events", params:, headers:, as: :json
     end
 
     perform_enqueued_jobs
@@ -82,5 +88,63 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
       },
       actual_body
     )
+  end
+
+  test "app_mention event with invalid signature" do
+    channel_id = "XXX"
+    user_id = "YYY"
+    query_body = "ZZZ"
+    query = "<@TEST_BOT_ID> #{query_body}"
+
+    timestamp = Time.now.to_i
+    params = {
+      type: "event_callback",
+      event: {
+        type: "app_mention",
+        text: query,
+        channel: channel_id,
+        user: user_id
+      }
+    }
+    headers = {
+      "X-Slack-Request-Timestamp": timestamp,
+      "X-Slack-Signature": "invalid signature"
+    }
+
+    post "/slack/events", params:, headers:, as: :json
+
+    assert_response :bad_request
+  end
+
+  test "app_mention event when SLACK_SIGNING_SECRET is not given" do
+    channel_id = "XXX"
+    user_id = "YYY"
+    query_body = "ZZZ"
+    query = "<@TEST_BOT_ID> #{query_body}"
+
+    timestamp = Time.now.to_i
+    params = {
+      type: "event_callback",
+      event: {
+        type: "app_mention",
+        text: query,
+        channel: channel_id,
+        user: user_id
+      }
+    }
+    request_body = ActionDispatch::RequestEncoder.encoder(:json).encode_params(params)
+    headers = {
+      "X-Slack-Request-Timestamp": timestamp,
+      "X-Slack-Signature": compute_request_signature(timestamp, request_body)
+    }
+
+    with_env("SLACK_SIGNING_SECRET" => nil) do
+      assert_nil ENV["SLACK_SIGNING_SECRET"]
+      stub(Slack::Events.config).signing_secret { nil }
+
+      post "/slack/events", params:, headers:, as: :json
+    end
+
+    assert_response :internal_server_error
   end
 end
