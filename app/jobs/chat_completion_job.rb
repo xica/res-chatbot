@@ -34,7 +34,7 @@ class ChatCompletionJob < ApplicationJob
     #   messages = [{ "role" => "user", "content" => query_body }]
     # end
 
-    query = Query.create!(
+    query = Query.new(
       message: message,
       text: messages[-1][:content],
       body: {
@@ -63,6 +63,8 @@ class ChatCompletionJob < ApplicationJob
     #        "はい、正しいです。ChatGPTはオープンAIによってトレーニングされた大規模な言語モデルであり、インターネットから情報を取得することができます。現在の日付は2023年3月24日です。"},
     #     "finish_reason"=>"stop",
     #     "index"=>0}]}
+
+    query.save!
 
     response = Response.create!(
       query: query,
