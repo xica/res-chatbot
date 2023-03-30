@@ -10,6 +10,15 @@
 * `OPENAI_ORGANIZATION_ID` is for OpenAI API Organization ID (optional)
 * `REDIS_URL` is for URL of Redis server
 
+## Required scopes
+
+* `app_mentions:read`
+* `channels:read`
+* `chat:write`
+* `reactions:write`
+* `users:read`
+* `users:read:email`
+
 ## License
 
 MIT License
