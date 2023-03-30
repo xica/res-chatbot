@@ -13,3 +13,10 @@ two:
   text: MyString
   slack_ts: 1680132294.789146
   slack_thread_ts: 1680132294.789146
+
+three:
+  conversation: random
+  user: one
+  text: MyString
+  slack_ts: 1680142578.5190222
+  slack_thread_ts: 1680142578.5190222

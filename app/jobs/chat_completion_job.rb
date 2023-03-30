@@ -22,6 +22,11 @@ class ChatCompletionJob < ApplicationJob
       return
     end
 
+    if message.query.present?
+      logger.warn "Message with id=#{message.id} already has its query and response"
+      return
+    end
+
     # TODO: construct the prompt when the first query in a conversation
     #
     # if message.slack_ts == message.slack_thread_ts

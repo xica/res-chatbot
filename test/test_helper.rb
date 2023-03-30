@@ -5,6 +5,7 @@ ENV["SLACK_BOT_TOKEN"] = "test-slack-bot-token"
 ENV["SLACK_SIGNING_SECRET"] = "3d3dbfb61ac7935eefb4b4d8f5aaf930"
 
 require_relative "../config/environment"
+require "database_rewinder"
 require "openssl"
 require "rails/test_help"
 require "rr"
@@ -26,6 +27,19 @@ class ActiveSupport::TestCase
   )
 
   # Add more helper methods to be used by all tests here...
+  module DatabaseRewinderSupport
+    def before_setup
+      super
+      DatabaseRewinder.start
+    end
+
+    def after_teardown
+      DatabaseRewinder.clean
+      super
+    end
+  end
+
+  include DatabaseRewinderSupport
 
   module SlackTestHelper
     def decode_slack_client_request_body(request_body)

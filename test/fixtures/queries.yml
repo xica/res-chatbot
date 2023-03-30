@@ -1,11 +1,11 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
-one:
-  message: one
+two:
+  message: two
   text: MyString
   body: {}
 
-two:
-  message: two
+three:
+  message: three
   text: MyString
   body: {}

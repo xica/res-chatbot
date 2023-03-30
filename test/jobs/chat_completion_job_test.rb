@@ -73,4 +73,13 @@ class ChatCompletionJobTest < ActiveJob::TestCase
       actual_body
     )
   end
+
+
+  test "duplicate case" do
+    message = messages(:two)
+
+    dont_allow(Utils).chat_completion
+
+    ChatCompletionJob.perform_now("message_id" => message.id)
+  end
 end
