@@ -64,15 +64,18 @@ class ChatCompletionJob < ApplicationJob
     #     "finish_reason"=>"stop",
     #     "index"=>0}]}
 
-    query.save!
-
-    response = Response.create!(
+    response = Response.new(
       query: query,
       text: chat_response.dig("choices", 0, "message", "content").strip,
       n_query_tokens: chat_response.dig("usage", "prompt_tokens"),
       n_response_tokens: chat_response.dig("usage", "completion_tokens"),
       body: chat_response.to_json
     )
+
+    Query.transaction do
+      query.save!
+      response.save!
+    end
 
     # TODO: make the following response creation into Response's instance method
 
