@@ -118,10 +118,14 @@ class ChatCompletionJob < ApplicationJob
   private def start_query(message, name="hourglass_flowing_sand")
     client = Slack::Web::Client.new
     client.reactions_add(channel: message.conversation.slack_id, timestamp: message.slack_ts, name:)
+  rescue
+    nil
   end
 
   private def finish_query(message, name="hourglass_flowing_sand")
     client = Slack::Web::Client.new
     client.reactions_remove(channel: message.conversation.slack_id, timestamp: message.slack_ts, name:)
+  rescue
+    nil
   end
 end
