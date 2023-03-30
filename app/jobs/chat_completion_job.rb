@@ -27,6 +27,8 @@ class ChatCompletionJob < ApplicationJob
       return
     end
 
+    start_query(message)
+
     # TODO: construct the prompt when the first query in a conversation
     #
     # if message.slack_ts == message.slack_thread_ts
@@ -99,11 +101,11 @@ class ChatCompletionJob < ApplicationJob
       **post_params
     )
     logger.info posted_message.inspect
+
+    finish_query(message)
   end
 
-  private
-
-  def make_first_messages(prompt, query_body, model: "gpt-3.5-turbo")
+  private def make_first_messages(prompt, query_body, model: "gpt-3.5-turbo")
     content = <<~END_MESSAGE
     #{prompt}
 
@@ -111,5 +113,15 @@ class ChatCompletionJob < ApplicationJob
     END_MESSAGE
     content.gsub!('{current_date}', Time.now.strftime("%Y-%m-%d"))
     [{role: "user", content: content.strip}]
+  end
+
+  private def start_query(message, name="hourglass_flowing_sand")
+    client = Slack::Web::Client.new
+    client.reactions_add(channel: message.conversation.slack_id, timestamp: message.slack_ts, name:)
+  end
+
+  private def finish_query(message, name="hourglass_flowing_sand")
+    client = Slack::Web::Client.new
+    client.reactions_remove(channel: message.conversation.slack_id, timestamp: message.slack_ts, name:)
   end
 end

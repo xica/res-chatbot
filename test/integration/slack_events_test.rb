@@ -44,6 +44,8 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
     ) { chat_completion_response }
 
     stub_slack_api(:post, "chat.postMessage")
+    stub_slack_api(:post, "reactions.add")
+    stub_slack_api(:post, "reactions.remove")
 
     assert Message.find_by(conversation: channel, user: user, slack_ts: slack_ts).blank?
 

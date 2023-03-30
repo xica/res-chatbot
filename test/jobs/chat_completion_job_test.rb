@@ -40,6 +40,8 @@ class ChatCompletionJobTest < ActiveJob::TestCase
     end
 
     stub_slack_api(:post, "chat.postMessage")
+    stub_slack_api(:post, "reactions.add")
+    stub_slack_api(:post, "reactions.remove")
 
     ChatCompletionJob.perform_now("message_id" => message.id)
 
@@ -47,6 +49,20 @@ class ChatCompletionJobTest < ActiveJob::TestCase
     assert_slack_api_called(:post, "chat.postMessage") do |request|
       actual_body = decode_slack_client_request_body(request.body)
     end
+
+    assert_slack_api_called(:post, "reactions.add",
+                            body: {
+                              "channel" => channel.slack_id,
+                              "timestamp" => message.slack_ts,
+                              "name" => "hourglass_flowing_sand"
+                            })
+
+    assert_slack_api_called(:post, "reactions.remove",
+                            body: {
+                              "channel" => channel.slack_id,
+                              "timestamp" => message.slack_ts,
+                              "name" => "hourglass_flowing_sand"
+                            })
 
     assert_equal(
       {
