@@ -42,6 +42,24 @@ class ActiveSupport::TestCase
   include DatabaseRewinderSupport
 
   module SlackTestHelper
+    def stub_slack_api(http_method, api_method, body: nil, headers: nil)
+      url = File.join(Slack::Web.config.endpoint, api_method)
+
+      with_params = {}
+      with_params[:body] = body if body
+      with_params[:headers] = headers || {}
+      with_params[:headers]["Content-Type"] ||= "application/x-www-form-urlencoded"
+
+      stub_request(http_method, url).with(**with_params)
+    end
+
+    def assert_slack_api_called(http_method, api_method, **params, &block)
+      params[:headers] ||= {}
+      params[:headers]["Content-Type"] ||= "application/x-www-form-urlencoded"
+      url = File.join(Slack::Web.config.endpoint, api_method)
+      assert_requested(http_method, url, **params, &block)
+    end
+
     def decode_slack_client_request_body(request_body)
       body = URI.decode_www_form(request_body).to_h
       body.map { |key, value|

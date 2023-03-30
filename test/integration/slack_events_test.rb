@@ -43,7 +43,7 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
       temperature: 0.7
     ) { chat_completion_response }
 
-    stub_request(:post, "https://slack.com/api/chat.postMessage")
+    stub_slack_api(:post, "chat.postMessage")
 
     assert Message.find_by(conversation: channel, user: user, slack_ts: slack_ts).blank?
 
@@ -83,12 +83,7 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     actual_body = nil
-    assert_requested(
-      :post, "https://slack.com/api/chat.postMessage",
-      headers: {
-        "Content-Type" => "application/x-www-form-urlencoded"
-      }
-    ) do |request|
+    assert_slack_api_called(:post, "chat.postMessage") do |request|
       actual_body = decode_slack_client_request_body(request.body)
     end
 
@@ -147,9 +142,7 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
       }
     end
 
-    stub_request(:post, "https://slack.com/api/users.info")
-      .with(body: {"user" => user_id, "include_locale" => true},
-            headers: {"Content-Type" => "application/x-www-form-urlencoded"})
+    stub_slack_api(:post, "users.info", body: {"user" => user_id, "include_locale" => true})
       .to_return(
         body: {
           "ok" => true,
@@ -166,9 +159,7 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
         }.to_json
       )
 
-    stub_request(:post, "https://slack.com/api/conversations.info")
-      .with(body: "channel=#{channel_id}",
-            headers: {"Content-Type" => "application/x-www-form-urlencoded"})
+    stub_slack_api(:post, "conversations.info", body: {"channel" => channel_id})
       .to_return(
         body: {
           "ok" => true,

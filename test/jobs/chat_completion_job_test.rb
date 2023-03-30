@@ -10,8 +10,6 @@ class ChatCompletionJobTest < ActiveJob::TestCase
     answer = "ABC"
     expected_response = "<@#{user.slack_id}> #{answer}"
 
-    stub_request(:post, "https://slack.com/api/chat.postMessage")
-
     mock(Utils).chat_completion(
       {
         role: "user",
@@ -41,15 +39,12 @@ class ChatCompletionJobTest < ActiveJob::TestCase
       }
     end
 
+    stub_slack_api(:post, "chat.postMessage")
+
     ChatCompletionJob.perform_now("message_id" => message.id)
 
     actual_body = nil
-    assert_requested(
-      :post, "https://slack.com/api/chat.postMessage",
-      headers: {
-        "Content-Type" => "application/x-www-form-urlencoded"
-      }
-    ) do |request|
+    assert_slack_api_called(:post, "chat.postMessage") do |request|
       actual_body = decode_slack_client_request_body(request.body)
     end
 
