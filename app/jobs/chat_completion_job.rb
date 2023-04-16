@@ -37,7 +37,7 @@ class ChatCompletionJob < ApplicationJob
     #
     # if message.slack_ts == message.slack_thread_ts
        prompt = DEFAULT_PROMPT
-       messages = make_first_messages(prompt, message.text)
+       messages = Utils.make_first_messages(prompt, message.text)
        model = "gpt-3.5-turbo"
        temperature = 0.7
     # else
@@ -136,16 +136,6 @@ class ChatCompletionJob < ApplicationJob
     end
 
     finish_query(message)
-  end
-
-  private def make_first_messages(prompt, query_body, model: "gpt-3.5-turbo")
-    content = <<~END_MESSAGE
-    #{prompt}
-
-    #{query_body}
-    END_MESSAGE
-    content.gsub!('{current_date}', Time.now.strftime("%Y-%m-%d"))
-    [{role: "user", content: content.strip}]
   end
 
   private def start_query(message, name=REACTION_SYMBOL)
