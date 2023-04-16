@@ -4,12 +4,6 @@ require "utils"
 class ChatCompletionJob < ApplicationJob
   queue_as :default
 
-  DEFAULT_PROMPT = <<~END_PROMPT
-  You are ChatGPT, a large language model trained by OpenAI.
-  Answer as concisely as possible.
-  Current date: {current_date}
-  END_PROMPT
-
   DEFAULT_REACTION_SYMBOL = "hourglass_flowing_sand".freeze
   REACTION_SYMBOL = ENV.fetch("SLACK_REACTION_SYMBOL", DEFAULT_REACTION_SYMBOL)
   ERROR_REACTION_SYMBOL = "bangbang".freeze
@@ -33,17 +27,14 @@ class ChatCompletionJob < ApplicationJob
 
     start_query(message)
 
-    # TODO: construct the prompt when the first query in a conversation
-    #
-    # if message.slack_ts == message.slack_thread_ts
-       prompt = DEFAULT_PROMPT
-       messages = Utils.make_first_messages(prompt, message.text)
-       model = "gpt-3.5-turbo"
-       temperature = 0.7
-    # else
-    #   # TODO: build chat context
-    #   messages = [{ "role" => "user", "content" => query_body }]
-    # end
+    if message.slack_ts == message.slack_thread_ts
+      prompt = Utils.default_prompt
+      messages = Utils.make_first_messages(prompt, message.text)
+      model = "gpt-3.5-turbo"
+      temperature = 0.7
+    else
+      return  # TODO: build chat context
+    end
 
     query = Query.new(
       message: message,

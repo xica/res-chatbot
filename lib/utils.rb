@@ -36,4 +36,14 @@ module Utils
 
     [{role: "user", content: content.strip}]
   end
+
+  DEFAULT_PROMPT = <<~END_DEFAULT_PROMPT.freeze
+    You are ChatGPT, a large language model trained by OpenAI.
+    Answer as concisely as possible.
+    Current date: {current_date}
+  END_DEFAULT_PROMPT
+
+  module_function def default_prompt
+    Rails.application.config.default_prompt || DEFAULT_PROMPT
+  end
 end
