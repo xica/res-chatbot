@@ -13,13 +13,13 @@ class ChatCompletionJobTest < ActiveJob::TestCase
     mock(Utils).chat_completion(
       {
         role: "user",
-        content: [
-          "You are ChatGPT, a large language model trained by OpenAI.",
-          "Answer as concisely as possible.",
-          "Current date: #{Time.now.strftime("%Y-%m-%d")}",
-          "\n",
-          message.text
-        ].join("\n")
+        content: <<~END_CONTENT.chomp
+          You are ChatGPT, a large language model trained by OpenAI.
+          Answer as concisely as possible.
+          Current date: #{Time.now.strftime("%Y-%m-%d")}
+
+          #{message.text}
+        END_CONTENT
       },
       model: "gpt-3.5-turbo",
       temperature: 0.7

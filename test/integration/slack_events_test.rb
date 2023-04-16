@@ -17,13 +17,13 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
     chat_completion_messages = [
       {
         role: "user",
-        content: [
-          "You are ChatGPT, a large language model trained by OpenAI.",
-          "Answer as concisely as possible.",
-          "Current date: #{Time.now.strftime("%Y-%m-%d")}",
-          "\n",
-          "ZZZ"
-        ].join("\n")
+        content: <<~END_CONTENT.chomp
+          You are ChatGPT, a large language model trained by OpenAI.
+          Answer as concisely as possible.
+          Current date: #{Time.now.strftime("%Y-%m-%d")}
+
+          #{query_body}
+        END_CONTENT
       }
     ]
 

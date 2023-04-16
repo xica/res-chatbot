@@ -22,4 +22,16 @@ class UtilsTest < ActiveSupport::TestCase
       }
     )
   end
+
+  test "make_first_messages with prompt that includes '{query_body}'" do
+    prompt = "abc\n{query_body}\nxyz"
+    result = Utils.make_first_messages(prompt, "QUERY BODY")
+    assert_equal "abc\nQUERY BODY\nxyz", result.dig(0, :content)
+  end
+
+  test "make_first_messages with prompt that does not includes '{query_body}'" do
+    prompt = "abc\nxyz"
+    result = Utils.make_first_messages(prompt, "QUERY BODY")
+    assert_equal "abc\nxyz\n\nQUERY BODY", result.dig(0, :content)
+  end
 end

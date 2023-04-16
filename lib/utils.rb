@@ -25,19 +25,18 @@ module Utils
   DEFAULT_MODEL = "gpt-3.5-turbo".freeze
 
   module_function def make_first_messages(prompt, query_body, model: DEFAULT_MODEL)
-    content = <<~END_MESSAGE
-    #{prompt}
-
-    {query_body}
-    END_MESSAGE
-
-    content.gsub!('{current_date}', Time.now.strftime("%Y-%m-%d"))
+    content = if prompt.include?("{query_body}")
+                prompt.dup
+              else
+                "#{prompt.chomp}\n\n{query_body}"
+              end
     content.gsub!('{query_body}', query_body)
+    content.gsub!('{current_date}', Time.now.strftime("%Y-%m-%d"))
 
     [{role: "user", content: content.strip}]
   end
 
-  DEFAULT_PROMPT = <<~END_DEFAULT_PROMPT.freeze
+  DEFAULT_PROMPT = <<~END_DEFAULT_PROMPT.chomp.freeze
     You are ChatGPT, a large language model trained by OpenAI.
     Answer as concisely as possible.
     Current date: {current_date}
