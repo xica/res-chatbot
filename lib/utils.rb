@@ -43,6 +43,6 @@ module Utils
   END_DEFAULT_PROMPT
 
   module_function def default_prompt
-    Rails.application.config.default_prompt || DEFAULT_PROMPT
+    Rails.application.credentials.default_prompt || DEFAULT_PROMPT
   end
 end
