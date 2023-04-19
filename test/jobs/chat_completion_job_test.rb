@@ -94,6 +94,92 @@ class ChatCompletionJobTest < ActiveJob::TestCase
     ChatCompletionJob.perform_now("message_id" => message.id)
   end
 
+
+  test "for a message in gpt-4 allowed conversation" do
+    message = messages(:one)
+    channel = message.conversation
+    user = message.user
+    answer = "ABC"
+    expected_response = "<@#{user.slack_id}> #{answer}"
+
+    channel.update!(model: "gpt-4")
+
+    mock(Utils).chat_completion(
+      {
+        role: "user",
+        content: <<~END_CONTENT.chomp
+          You are ChatGPT, a large language model trained by OpenAI.
+          Answer as concisely as possible.
+          Current date: #{Time.now.strftime("%Y-%m-%d")}
+
+          #{message.text}
+        END_CONTENT
+      },
+      model: "gpt-4",
+      temperature: 0.7
+    ) do
+      {
+        "model" => "gpt-4-0314",
+        "usage" => {
+          "prompt_tokens" => 70,
+          "completion_tokens" => 50,
+          "total_tokens" => 120
+        },
+        "choices" => [
+          {
+            "message" => {"content" => answer}
+          }
+        ]
+      }
+    end
+
+    stub_slack_api(:post, "chat.postMessage").to_return(body: {ok: true, ts: Time.now.to_f.to_s}.to_json)
+    stub_slack_api(:post, "reactions.add")
+    stub_slack_api(:post, "reactions.remove")
+
+    ChatCompletionJob.perform_now("message_id" => message.id)
+
+    actual_body = nil
+    assert_slack_api_called(:post, "chat.postMessage") do |request|
+      actual_body = decode_slack_client_request_body(request.body)
+    end
+
+    assert_slack_api_called(:post, "reactions.add",
+                            body: {
+                              "channel" => channel.slack_id,
+                              "timestamp" => message.slack_ts,
+                              "name" => "hourglass_flowing_sand"
+                            })
+
+    assert_slack_api_called(:post, "reactions.remove",
+                            body: {
+                              "channel" => channel.slack_id,
+                              "timestamp" => message.slack_ts,
+                              "name" => "hourglass_flowing_sand"
+                            })
+
+    assert_equal(
+      {
+        "channel" => channel.slack_id,
+        "text" => expected_response,
+        "blocks" => [
+          {
+            "type" => "section",
+            "text" => {
+              "type" => "mrkdwn",
+              "text" => expected_response
+            }
+          },
+          api_usage_block(70, 50, "gpt-4-0314"),
+          feedback_action_block
+        ],
+        "thread_ts" => message.slack_thread_ts
+      },
+      actual_body
+    )
+  end
+
+
   class WithNonNilRailsApplicationCredentialsDefaultPromptTest < ActiveJob::TestCase
     include SlackTestHelper
 

@@ -8,6 +8,12 @@ class ChatCompletionJob < ApplicationJob
   REACTION_SYMBOL = ENV.fetch("SLACK_REACTION_SYMBOL", DEFAULT_REACTION_SYMBOL)
   ERROR_REACTION_SYMBOL = "bangbang".freeze
 
+  DEFAULT_MODEL = "gpt-3.5-turbo".freeze
+
+  def model_for_message(message)
+    message.conversation.model || DEFAULT_MODEL
+  end
+
   def perform(params)
     if params["message_id"].blank?
       logger.warn "Empty message_id is given"
@@ -30,7 +36,7 @@ class ChatCompletionJob < ApplicationJob
     if message.slack_ts == message.slack_thread_ts
       prompt = Utils.default_prompt
       messages = Utils.make_first_messages(prompt, message.text)
-      model = "gpt-3.5-turbo"
+      model = model_for_message(message)
       temperature = 0.7
     else
       return  # TODO: build chat context
