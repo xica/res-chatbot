@@ -31,8 +31,15 @@ class ChatCompletionJob < ApplicationJob
       return
     end
 
-    start_query(message)
+    begin
+      start_query(message)
+      process_query(message)
+    ensure
+      finish_query(message)
+    end
+  end
 
+  private def process_query(message)
     if message.slack_ts == message.slack_thread_ts
       prompt = Utils.default_prompt
       messages = Utils.make_first_messages(prompt, message.text)
@@ -132,7 +139,6 @@ class ChatCompletionJob < ApplicationJob
       end
     end
 
-    finish_query(message)
   end
 
   private def start_query(message, name=REACTION_SYMBOL)
