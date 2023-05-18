@@ -106,6 +106,7 @@ module SlackBot
         #  "channel"=>"C036WLG7Z",
         #  "event_ts"=>"1679644228.326869"}
 
+        logger.info "event['type'] = #{event["type"].inspect}"
         if event["type"] == "app_mention"
           team = event["team"]
           channel = ensure_conversation(event["channel"])
