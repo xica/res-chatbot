@@ -1,5 +1,20 @@
 require "test_helper"
 
+class ChatCompletionJobOptionsTest < ActiveSupport::TestCase
+  test "creation from a hash" do
+    hash_options = {
+      "model" => "gpt-3.5-turbo",
+      "temperature" => 1.5,
+      "top_p" => 0.5,
+      "no_default_prompt" => true
+    }
+    options = ChatCompletionJob::Options.new(**hash_options)
+    assert_equal ["gpt-3.5-turbo", 1.5, 0.5, true],
+                 [options.model, options.temperature, options.top_p, options.no_default_prompt]
+  end
+end
+
+
 class ChatCompletionJobTest < ActiveJob::TestCase
   include SlackTestHelper
 
