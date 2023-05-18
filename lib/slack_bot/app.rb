@@ -276,6 +276,7 @@ module SlackBot
     end
 
     private def fetch_conversation!(channel_id)
+      logger.info "[fetch_conversation!] channel_id=#{channel_id}"
       slack_client = Slack::Web::Client.new
       response = slack_client.conversations_info(channel: channel_id)
       if response.ok
