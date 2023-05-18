@@ -36,10 +36,6 @@ module SlackBot
       end
     end
 
-    private def thread_context_prohibited?(channel)
-      true
-    end
-
     before "/events" do
       verify_slack_request!
     end
@@ -122,36 +118,10 @@ module SlackBot
             logger.info "Event:\n" + event.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
             logger.info "#{channel.slack_id}: #{text}"
 
-            if thread_ts && thread_context_prohibited?(channel)
-              response = "Sorry, we can't continue the conversation within threads on this channel! Please mention me outside threads."
-              Utils.post_ephemeral(
-                channel: channel.slack_id,
-                user: user.slack_id,
-                thread_ts: ts,
-                text: response,
-                blocks: [
-                  {
-                    type: "section",
-                    text: {
-                      type: "mrkdwn",
-                      text: "*#{response}*"
-                    }
-                  }
-                ]
-              )
+            if thread_ts && channel.thread_allowed?
+              notify_do_not_allowed_thread_context(channel, user, ts)
             else
-              case text
-              when /^<@#{bot_id}>\s+/
-                message_body = Regexp.last_match.post_match
-                message = Message.create!(
-                  conversation: channel,
-                  user: user,
-                  text: message_body,
-                  slack_ts: ts,
-                  slack_thread_ts: thread_ts || ts
-                )
-                ChatCompletionJob.perform_later("message_id" => message.id)
-              end
+              process_message(channel, user, ts, thread_ts, text)
             end
           end
         end
@@ -316,6 +286,39 @@ module SlackBot
       else
         raise "conversations.info with channel=#{channel_id} is failed"
       end
+    end
+
+    private def notify_do_not_allowed_thread_context(channel, user, ts)
+      response = "Sorry, we can't continue the conversation within threads on this channel! Please mention me outside threads."
+      Utils.post_ephemeral(
+        channel: channel.slack_id,
+        user: user.slack_id,
+        thread_ts: ts,
+        text: response,
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: "*#{response}*"
+            }
+          }
+        ]
+      )
+    end
+
+    private def process_message(channel, user, ts, thread_ts, text)
+      return unless text =~ /^<@#{bot_id}>\s+/
+
+      message_body = Regexp.last_match.post_match
+      message = Message.create!(
+        conversation: channel,
+        user: user,
+        text: message_body,
+        slack_ts: ts,
+        slack_thread_ts: thread_ts || ts
+      )
+      ChatCompletionJob.perform_later("message_id" => message.id)
     end
   end
 end
