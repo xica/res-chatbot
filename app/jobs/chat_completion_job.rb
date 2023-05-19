@@ -113,6 +113,8 @@ class ChatCompletionJob < ApplicationJob
 
     chat_response = Utils.chat_completion(*messages, model:, temperature:)
     logger.info "Chat Response:\n" + chat_response.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
+    response_text = chat_response.dig("choices", 0, "message", "content").strip
+    logger.info "Chat Response Text: #{response_text}"
 
     # {"id"=>"chatcmpl-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     #  "object"=>"chat.completion",
@@ -148,7 +150,7 @@ class ChatCompletionJob < ApplicationJob
     else
       response = Response.new(
         query: query,
-        text: chat_response.dig("choices", 0, "message", "content").strip,
+        text: response_text,
         n_query_tokens: chat_response.dig("usage", "prompt_tokens"),
         n_response_tokens: chat_response.dig("usage", "completion_tokens"),
         body: chat_response,
