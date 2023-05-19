@@ -93,6 +93,7 @@ class ChatCompletionJob < ApplicationJob
                else
                  Utils.make_thread_context(message)
                end
+    logger.info "Query Messages:\n" + messages.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
 
     model = options.model || model_for_message(message)
     temperature = options.temperature || 0.7
