@@ -33,7 +33,7 @@ module Utils
     content.gsub!('{query_body}', query_body)
     content.gsub!('{current_date}', Time.now.strftime("%Y-%m-%d"))
 
-    [{role: "user", content: content.strip}]
+    [{"role" => "user", "content" => content.strip}]
   end
 
   DEFAULT_PROMPT = <<~END_DEFAULT_PROMPT.chomp.freeze
@@ -58,9 +58,9 @@ module Utils
       # TODO: internal error
     end
 
-    messages = prev_query.body.dig("parameters", "messages").dup
+    messages =  prev_query.body.dig("parameters", "messages").dup
     messages << prev_response.body.dig("choices", 0, "message")
-
+    messages << {"role" => "user", "content" => message.text}
     messages
   end
 end

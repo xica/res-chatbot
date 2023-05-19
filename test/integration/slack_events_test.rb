@@ -16,8 +16,8 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
 
     chat_completion_messages = [
       {
-        role: "user",
-        content: <<~END_CONTENT.chomp
+        "role" => "user",
+        "content" => <<~END_CONTENT.chomp
           You are ChatGPT, a large language model trained by OpenAI.
           Answer as concisely as possible.
           Current date: #{Time.now.strftime("%Y-%m-%d")}
@@ -128,8 +128,8 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
     expected_response = "<@#{user_id}> #{answer}"
 
     stub(Utils).chat_completion({
-      role: "user",
-      content: [
+      "role" => "user",
+      "content" => [
         "You are ChatGPT, a large language model trained by OpenAI.",
         "Answer as concisely as possible.",
         "Current date: #{Time.now.strftime("%Y-%m-%d")}",
@@ -302,8 +302,8 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
 
     chat_completion_messages = [
       {
-        role: "user",
-        content: <<~END_CONTENT.chomp
+        "role" => "user",
+        "content" => <<~END_CONTENT.chomp
           You are ChatGPT, a large language model trained by OpenAI.
           Answer as concisely as possible.
           Current date: #{Time.now.strftime("%Y-%m-%d")}

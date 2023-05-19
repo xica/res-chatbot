@@ -100,7 +100,7 @@ class ChatCompletionJob < ApplicationJob
 
     query = Query.new(
       message: message,
-      text: messages[-1][:content],
+      text: messages[-1]["content"],
       body: {
         parameters: {
           model: model,

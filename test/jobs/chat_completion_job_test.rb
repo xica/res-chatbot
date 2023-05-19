@@ -27,8 +27,8 @@ class ChatCompletionJobTest < ActiveJob::TestCase
 
     mock(Utils).chat_completion(
       {
-        role: "user",
-        content: <<~END_CONTENT.chomp
+        "role" => "user",
+        "content" => <<~END_CONTENT.chomp
           You are ChatGPT, a large language model trained by OpenAI.
           Answer as concisely as possible.
           Current date: #{Time.now.strftime("%Y-%m-%d")}
@@ -121,8 +121,8 @@ class ChatCompletionJobTest < ActiveJob::TestCase
 
     mock(Utils).chat_completion(
       {
-        role: "user",
-        content: <<~END_CONTENT.chomp
+        "role" => "user",
+        "content" => <<~END_CONTENT.chomp
           You are ChatGPT, a large language model trained by OpenAI.
           Answer as concisely as possible.
           Current date: #{Time.now.strftime("%Y-%m-%d")}
@@ -219,8 +219,8 @@ class ChatCompletionJobTest < ActiveJob::TestCase
 
       mock(Utils).chat_completion(
         {
-          role: "user",
-          content: <<~END_CONTENT.chomp
+          "role" => "user",
+          "content" => <<~END_CONTENT.chomp
             Before query_body
 
             #{message.text}
