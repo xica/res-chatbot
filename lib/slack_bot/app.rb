@@ -36,6 +36,10 @@ module SlackBot
       end
     end
 
+    private def thread_allowed_channel?(channel)
+      channel.thread_allowed?
+    end
+
     before "/events" do
       verify_slack_request!
     end
@@ -117,7 +121,7 @@ module SlackBot
             logger.info "Event:\n" + event.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
             logger.info "#{channel.slack_id}: #{text}"
 
-            if thread_ts && channel.thread_allowed?
+            if thread_ts and not thread_allowed_channel?(channel)
               notify_do_not_allowed_thread_context(channel, user, ts)
             else
               process_message(channel, user, ts, thread_ts, text)
