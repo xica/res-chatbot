@@ -37,7 +37,7 @@ module SlackBot
     end
 
     private def thread_allowed_channel?(channel)
-      channel.thread_allowed?
+      true # channel.thread_allowed?
     end
 
     before "/events" do
