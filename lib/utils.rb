@@ -45,4 +45,22 @@ module Utils
   module_function def default_prompt
     Rails.application.credentials.default_prompt || DEFAULT_PROMPT
   end
+
+  module_function def make_thread_context(message)
+    prev_message = message.previous_message
+    prev_query = prev_message.query
+    if prev_query.blank?
+      # TODO: internal error
+    end
+
+    prev_response = prev_query.response
+    if prev_response.blank?
+      # TODO: internal error
+    end
+
+    messages = prev_query.body.dig("parameters", "messages").dup
+    messages << prev_response.body.dig("choices", 0, "message")
+
+    messages
+  end
 end

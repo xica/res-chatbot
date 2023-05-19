@@ -83,18 +83,19 @@ class ChatCompletionJob < ApplicationJob
   end
 
   private def process_query(message, options)
-    if message.slack_ts == message.slack_thread_ts
-      prompt = if options.no_default_prompt
-                 ""
+    messages = if message.slack_ts == message.slack_thread_ts
+                 prompt = if options.no_default_prompt
+                            ""
+                          else
+                            Utils.default_prompt
+                          end
+                 Utils.make_first_messages(prompt, message.text)
                else
-                 Utils.default_prompt
+                 Utils.make_thread_context(message)
                end
-      messages = Utils.make_first_messages(prompt, message.text)
-      model = options.model || model_for_message(message)
-      temperature = options.temperature || 0.7
-    else
-      return  # TODO: build chat context
-    end
+
+    model = options.model || model_for_message(message)
+    temperature = options.temperature || 0.7
 
     query = Query.new(
       message: message,
