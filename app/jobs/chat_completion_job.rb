@@ -4,9 +4,56 @@ require "utils"
 class ChatCompletionJob < ApplicationJob
   queue_as :default
 
+  VALID_MODELS = [
+    "gpt-3.5-turbo".freeze,
+    "gpt-3.5-turbo-0301".freeze,
+    "gpt-4".freeze,
+    "gpt-4-0314".freeze,
+  ].freeze
+
+  DEFAULT_MODEL = VALID_MODELS[0]
+
+  class InvalidOptionError < StandardError; end
+
+  Options = Struct.new(
+    :model,
+    :temperature,
+    :top_p,
+    :no_default_prompt,
+    keyword_init: true
+  ) do
+    def validate!
+      validate_model! unless model.nil?
+      validate_temperature! unless temperature.nil?
+      validate_top_p! unless top_p.nil?
+    end
+
+    def validate_model!
+      unless ChatCompletionJob::VALID_MODELS.include? model
+        raise InvalidOptionError, "Invalid model is specified: #{model}"
+      end
+    end
+
+    def validate_temperature!
+      unless 0 <= temperature && temperature <= 2
+        raise InvalidOptionError, "Temperature must be in 0..2"
+      end
+    end
+
+    def validate_top_p!
+      unless 0 <= top_p && top_p <= 1
+        raise InvalidOptionError, "Top_p must be in 0..1"
+      end
+    end
+  end
+
   DEFAULT_REACTION_SYMBOL = "hourglass_flowing_sand".freeze
   REACTION_SYMBOL = ENV.fetch("SLACK_REACTION_SYMBOL", DEFAULT_REACTION_SYMBOL)
   ERROR_REACTION_SYMBOL = "bangbang".freeze
+
+  def model_for_message(message)
+    message.conversation.model || DEFAULT_MODEL
+  end
 
   def perform(params)
     if params["message_id"].blank?
@@ -25,13 +72,26 @@ class ChatCompletionJob < ApplicationJob
       return
     end
 
-    start_query(message)
+    options = Options.new(**params.fetch("options", {}))
 
+    begin
+      start_query(message)
+      process_query(message, options)
+    ensure
+      finish_query(message)
+    end
+  end
+
+  private def process_query(message, options)
     if message.slack_ts == message.slack_thread_ts
-      prompt = Utils.default_prompt
+      prompt = if options.no_default_prompt
+                 ""
+               else
+                 Utils.default_prompt
+               end
       messages = Utils.make_first_messages(prompt, message.text)
-      model = "gpt-3.5-turbo"
-      temperature = 0.7
+      model = options.model || model_for_message(message)
+      temperature = options.temperature || 0.7
     else
       return  # TODO: build chat context
     end
@@ -126,7 +186,6 @@ class ChatCompletionJob < ApplicationJob
       end
     end
 
-    finish_query(message)
   end
 
   private def start_query(message, name=REACTION_SYMBOL)

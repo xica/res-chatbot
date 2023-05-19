@@ -36,10 +36,6 @@ module SlackBot
       end
     end
 
-    private def thread_context_prohibited?(channel)
-      true
-    end
-
     before "/events" do
       verify_slack_request!
     end
@@ -110,6 +106,7 @@ module SlackBot
         #  "channel"=>"C036WLG7Z",
         #  "event_ts"=>"1679644228.326869"}
 
+        logger.info "event['type'] = #{event["type"].inspect}"
         if event["type"] == "app_mention"
           team = event["team"]
           channel = ensure_conversation(event["channel"])
@@ -122,36 +119,10 @@ module SlackBot
             logger.info "Event:\n" + event.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
             logger.info "#{channel.slack_id}: #{text}"
 
-            if thread_ts && thread_context_prohibited?(channel)
-              response = "Sorry, we can't continue the conversation within threads on this channel! Please mention me outside threads."
-              Utils.post_ephemeral(
-                channel: channel.slack_id,
-                user: user.slack_id,
-                thread_ts: ts,
-                text: response,
-                blocks: [
-                  {
-                    type: "section",
-                    text: {
-                      type: "mrkdwn",
-                      text: "*#{response}*"
-                    }
-                  }
-                ]
-              )
+            if thread_ts && channel.thread_allowed?
+              notify_do_not_allowed_thread_context(channel, user, ts)
             else
-              case text
-              when /^<@#{bot_id}>\s+/
-                message_body = Regexp.last_match.post_match
-                message = Message.create!(
-                  conversation: channel,
-                  user: user,
-                  text: message_body,
-                  slack_ts: ts,
-                  slack_thread_ts: thread_ts || ts
-                )
-                ChatCompletionJob.perform_later("message_id" => message.id)
-              end
+              process_message(channel, user, ts, thread_ts, text)
             end
           end
         end
@@ -306,6 +277,7 @@ module SlackBot
     end
 
     private def fetch_conversation!(channel_id)
+      logger.info "[fetch_conversation!] channel_id=#{channel_id}"
       slack_client = Slack::Web::Client.new
       response = slack_client.conversations_info(channel: channel_id)
       if response.ok
@@ -316,6 +288,111 @@ module SlackBot
       else
         raise "conversations.info with channel=#{channel_id} is failed"
       end
+    end
+
+    private def notify_do_not_allowed_thread_context(channel, user, ts)
+      reply_as_ephemeral(channel, user, ts, "Sorry, we can't continue the conversation within threads on this channel! Please mention me outside threads.")
+    end
+
+    private def reply_as_ephemeral(channel, user, ts, message)
+      Utils.post_ephemeral(
+        channel: channel.slack_id,
+        user: user.slack_id,
+        thread_ts: ts,
+        text: message,
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: "*#{message}*"
+            }
+          }
+        ]
+      )
+    end
+
+    private def process_message(channel, user, ts, thread_ts, text)
+      return unless text =~ /^<@#{bot_id}>\s+/
+
+      message_body = Regexp.last_match.post_match
+      options = process_options(message_body)
+      return if options.nil?
+
+      begin
+        options.validate!
+      rescue ChatCompletionJob::InvalidOptionError => error
+        p ahiahi: error
+        reply_as_ephemeral(channel, user, ts, error.message)
+        return
+      end
+
+      message = Message.create!(
+        conversation: channel,
+        user: user,
+        text: message_body,
+        slack_ts: ts,
+        slack_thread_ts: thread_ts || ts
+      )
+      ChatCompletionJob.perform_later("message_id" => message.id, "options" => options.to_h)
+    end
+
+    private def process_options(message_body)
+      first_line = message_body.each_line.first
+      rest_lines = message_body[(first_line.length + 1) ..]
+
+      options = ChatCompletionJob::Options.new
+      return options unless first_line.match? /\A--\w+/
+
+      args = first_line.strip.split(" ")
+      args.each do |arg|
+        case arg
+        # when "--set-channel-prompt"
+        #   set_channel_prompt(channel, rest_lines)
+        # when "--unset-channel-prompt"
+        #   set_channel_prompt(channel)
+        when "--allow-thread"
+          allow_thread(channel)
+          return nil
+        when "--disallow-thread"
+          disallow_thread(channel)
+          return nil
+        when /\A--temperature=(\d+\.\d+)\z/
+          options.temperature = $1.to_f
+        when /\A--top-p=(1\.0|0\.\d+)\z/
+          options.top_p = $1.to_f
+        when /\A--model=(gpt-\S+)\z/
+          options.model = $1
+        when /\A--no-default-prompt\z/
+          options.no_default_prompt = true
+        end
+      end
+
+      options
+    end
+
+    private def check_command_permission!(channel, user)
+      # TODO
+    end
+
+    # private def set_channel_prompt(channel, user, prompt)
+    #   check_command_permission!(channel, user)
+    #   # TODO
+    # end
+
+    # private def unset_channel_prompt(channel, user, prompt)
+    #   check_command_permission!(channel, user)
+    #   # TODO
+    # end
+
+    private def allow_thread(channel, user)
+      check_command_permission!(channel, user)
+      channel.update!(thread_allowed: true)
+    end
+
+    private def disallow_thread(channel, user)
+      check_command_permission!(channel, user)
+      channel.update!(thread_allowed: false)
     end
   end
 end

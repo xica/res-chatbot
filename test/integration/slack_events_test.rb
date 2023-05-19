@@ -287,4 +287,155 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
   test "app_mention event with thread_ts in channel where thread conversation is not allowed" do
     skip "TODO"
   end
+
+
+  test "app_mention event with --model and --temperature" do
+    slack_ts = Time.now.to_f.to_s
+    channel = conversations(:random)
+    user = users(:one)
+    query_body = "--model=gpt-4 --temperature=0.2\nHELLO"
+    query = "<@TEST_BOT_ID> #{query_body}"
+    answer = "ABC"
+    expected_response = "<@#{user.slack_id}> #{answer}"
+
+    chat_completion_messages = [
+      {
+        role: "user",
+        content: <<~END_CONTENT.chomp
+          You are ChatGPT, a large language model trained by OpenAI.
+          Answer as concisely as possible.
+          Current date: #{Time.now.strftime("%Y-%m-%d")}
+
+          #{query_body}
+        END_CONTENT
+      }
+    ]
+
+    chat_completion_response = {
+      "model" => "gpt-4-0314",
+      "usage" => {
+        "prompt_tokens" => 70,
+        "completion_tokens" => 50,
+        "total_tokens" => 120
+      },
+      "choices" => [{"message" => {"content" => answer}}]
+    }
+
+    stub(Utils).chat_completion(
+      *chat_completion_messages,
+      model: "gpt-4",
+      temperature: 0.2
+    ) { chat_completion_response }
+
+    stub_slack_api(:post, "chat.postMessage").to_return(body: { "ok" => true, "ts" => Time.now.to_f.to_s }.to_json)
+
+    # Check the case when missing reactions:write scope
+    stub_slack_api(:post, "reactions.add").to_return { raise Slack::Web::Api::Errors::MissingScope, "missing_scope" }
+    stub_slack_api(:post, "reactions.remove").to_return { raise Slack::Web::Api::Errors::MissingScope, "missing_scope" }
+
+    assert Message.find_by(conversation: channel, user: user, slack_ts: slack_ts).blank?
+
+    assert_enqueued_with(job: ChatCompletionJob) do
+      params = {
+        type: "event_callback",
+        event: {
+          type: "app_mention",
+          text: query,
+          channel: channel.slack_id,
+          user: user.slack_id,
+          ts: slack_ts
+        }
+      }
+      request_body = ActionDispatch::RequestEncoder.encoder(:json).encode_params(params)
+      timestamp = slack_ts.to_i
+      headers = {
+        "X-Slack-Request-Timestamp": timestamp,
+        "X-Slack-Signature": compute_request_signature(timestamp, request_body)
+      }
+
+      post "/slack/events", params:, headers:, as: :json
+    end
+
+    message = Message.find_by!(conversation: channel, user: user, slack_ts: slack_ts)
+    assert_equal([
+                   query_body,
+                   slack_ts,
+                 ],
+                 [
+                   message.text,
+                   message.slack_thread_ts,
+                 ])
+
+    perform_enqueued_jobs
+
+    assert_response :success
+
+    actual_body = nil
+    assert_slack_api_called(:post, "chat.postMessage") do |request|
+      actual_body = decode_slack_client_request_body(request.body)
+    end
+
+    query = Query.find_by!(message: message)
+    response = Response.find_by!(query: query)
+
+    assert_equal(
+      {
+        "channel" => channel.slack_id,
+        "text" => expected_response,
+        "thread_ts" => slack_ts,
+        "blocks" => [
+          {
+            "type" => "section",
+            "text" => {
+              "type" => "mrkdwn",
+              "text" => expected_response
+            }
+          },
+          api_usage_block(70, 50, "gpt-4"),
+          feedback_action_block
+        ]
+      },
+      actual_body
+    )
+  end
+
+
+  test "app_mention event with --model option to specify an invalid model name" do
+    slack_ts = Time.now.to_f.to_s
+    channel = conversations(:random)
+    user = users(:one)
+    query_body = "--model=gpt-5-xyz\nHELLO"
+    query = "<@TEST_BOT_ID> #{query_body}"
+
+    stub_slack_api(:post, "chat.postEphemeral").to_return(body: { "ok" => true, "ts" => Time.now.to_f.to_s }.to_json)
+
+    # Check the case when missing reactions:write scope
+    stub_slack_api(:post, "reactions.add").to_return { raise Slack::Web::Api::Errors::MissingScope, "missing_scope" }
+    stub_slack_api(:post, "reactions.remove").to_return { raise Slack::Web::Api::Errors::MissingScope, "missing_scope" }
+
+    assert Message.find_by(conversation: channel, user: user, slack_ts: slack_ts).blank?
+
+    assert_no_enqueued_jobs do
+      params = {
+        type: "event_callback",
+        event: {
+          type: "app_mention",
+          text: query,
+          channel: channel.slack_id,
+          user: user.slack_id,
+          ts: slack_ts
+        }
+      }
+      request_body = ActionDispatch::RequestEncoder.encoder(:json).encode_params(params)
+      timestamp = slack_ts.to_i
+      headers = {
+        "X-Slack-Request-Timestamp": timestamp,
+        "X-Slack-Signature": compute_request_signature(timestamp, request_body)
+      }
+
+      post "/slack/events", params:, headers:, as: :json
+    end
+
+    assert Message.find_by(conversation: channel, user: user, slack_ts: slack_ts).blank?
+  end
 end
