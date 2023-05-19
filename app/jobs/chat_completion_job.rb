@@ -80,25 +80,29 @@ class ChatCompletionJob < ApplicationJob
     ensure
       finish_query(message)
     end
+  rescue Exception => error
+    logger.error "ERROR: #{error.message}"
   end
 
   private def process_query(message, options)
-    if message.slack_ts == message.slack_thread_ts
-      prompt = if options.no_default_prompt
-                 ""
+    messages = if message.slack_ts == message.slack_thread_ts
+                 prompt = if options.no_default_prompt
+                            ""
+                          else
+                            Utils.default_prompt
+                          end
+                 Utils.make_first_messages(prompt, message.text)
                else
-                 Utils.default_prompt
+                 Utils.make_thread_context(message)
                end
-      messages = Utils.make_first_messages(prompt, message.text)
-      model = options.model || model_for_message(message)
-      temperature = options.temperature || 0.7
-    else
-      return  # TODO: build chat context
-    end
+    logger.info "Query Messages:\n" + messages.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
+
+    model = options.model || model_for_message(message)
+    temperature = options.temperature || 0.7
 
     query = Query.new(
       message: message,
-      text: messages[-1][:content],
+      text: messages[-1]["content"],
       body: {
         parameters: {
           model: model,
@@ -112,6 +116,8 @@ class ChatCompletionJob < ApplicationJob
 
     chat_response = Utils.chat_completion(*messages, model:, temperature:)
     logger.info "Chat Response:\n" + chat_response.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
+    response_text = chat_response.dig("choices", 0, "message", "content").strip
+    logger.info "Chat Response Text: #{response_text}"
 
     # {"id"=>"chatcmpl-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     #  "object"=>"chat.completion",
@@ -147,10 +153,10 @@ class ChatCompletionJob < ApplicationJob
     else
       response = Response.new(
         query: query,
-        text: chat_response.dig("choices", 0, "message", "content").strip,
+        text: response_text,
         n_query_tokens: chat_response.dig("usage", "prompt_tokens"),
         n_response_tokens: chat_response.dig("usage", "completion_tokens"),
-        body: chat_response.to_json,
+        body: chat_response,
         slack_thread_ts: message.slack_thread_ts
       )
 

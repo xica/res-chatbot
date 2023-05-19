@@ -5,7 +5,7 @@ class ConversationTest < ActiveSupport::TestCase
     assert_nil Conversation.new.model
   end
 
-  test "thread not allowed in default" do
-    refute Conversation.new.thread_allowed?
+  test "thread allowed in default" do
+    assert Conversation.new.thread_allowed?
   end
 end
