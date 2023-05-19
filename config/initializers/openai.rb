@@ -5,4 +5,6 @@ OpenAI.configure do |config|
 
   org_id = ENV.fetch("OPENAI_ORGANIZATION_ID", nil)
   config.organization_id = org_id if org_id
+
+  config.request_timeout = ENV.fetch("OPENAI_REQUEST_TIMEOUT", 300).to_i
 end
