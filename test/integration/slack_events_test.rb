@@ -92,7 +92,9 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
     end
 
     query = Query.find_by!(message: message)
+    assert_kind_of Hash, query.body
     response = Response.find_by!(query: query)
+    assert_kind_of Hash, response.body
 
     assert_equal(
       {

@@ -151,7 +151,7 @@ class ChatCompletionJob < ApplicationJob
         text: chat_response.dig("choices", 0, "message", "content").strip,
         n_query_tokens: chat_response.dig("usage", "prompt_tokens"),
         n_response_tokens: chat_response.dig("usage", "completion_tokens"),
-        body: chat_response.to_json,
+        body: chat_response,
         slack_thread_ts: message.slack_thread_ts
       )
 
