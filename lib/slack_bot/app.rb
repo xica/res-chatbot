@@ -320,7 +320,6 @@ module SlackBot
       begin
         options.validate!
       rescue ChatCompletionJob::InvalidOptionError => error
-        p ahiahi: error
         reply_as_ephemeral(channel, user, ts, error.message)
         return
       end
