@@ -80,6 +80,8 @@ class ChatCompletionJob < ApplicationJob
     ensure
       finish_query(message)
     end
+  rescue Exception => error
+    logger.error "ERROR: #{error.message}"
   end
 
   private def process_query(message, options)
