@@ -116,9 +116,30 @@ class ChatCompletionJob < ApplicationJob
 
     chat_response = Utils.chat_completion(*messages, model:, temperature:)
     logger.info "Chat Response:\n" + chat_response.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
-    response_text = chat_response.dig("choices", 0, "message", "content").strip
-    logger.info "Chat Response Text: #{response_text}"
 
+    if chat_response.key? "error"
+      # Error case:
+      #
+      # {"error"=>
+      #   {"message"=>
+      #     "You exceeded your current quota, please check your plan and billing details.",
+      #    "type"=>"insufficient_quota",
+      #    "param"=>nil,
+      #    "code"=>nil}}
+
+      error_type, error_message = chat_response["error"].values_at("type", "message")
+      Utils.post_message(
+        channel: message.conversation.slack_id,
+        thread_ts: message.slack_thread_ts,
+        text: ":#{ERROR_REACTION_SYMBOL}: *ERROR*: #{error_type}: #{error_message}",
+        mrkdwn: true
+      )
+      error_query(message)
+      return
+    end
+
+    # Regular case:
+    #
     # {"id"=>"chatcmpl-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     #  "object"=>"chat.completion",
     #  "created"=>1679624074,
@@ -132,66 +153,47 @@ class ChatCompletionJob < ApplicationJob
     #     "finish_reason"=>"stop",
     #     "index"=>0}]}
 
-    # Error case:
-    #
-    # {"error"=>
-    #   {"message"=>
-    #     "You exceeded your current quota, please check your plan and billing details.",
-    #    "type"=>"insufficient_quota",
-    #    "param"=>nil,
-    #    "code"=>nil}}
+    response_text = chat_response.dig("choices", 0, "message", "content").strip
+    logger.info "Chat Response Text: #{response_text}"
+    response = Response.new(
+      query: query,
+      text: response_text,
+      n_query_tokens: chat_response.dig("usage", "prompt_tokens"),
+      n_response_tokens: chat_response.dig("usage", "completion_tokens"),
+      body: chat_response,
+      slack_thread_ts: message.slack_thread_ts
+    )
 
-    if chat_response.key? "error"
-      error_type, error_message = chat_response["error"].values_at("type", "message")
-      Utils.post_message(
-        channel: message.conversation.slack_id,
-        thread_ts: message.slack_thread_ts,
-        text: ":#{ERROR_REACTION_SYMBOL}: *ERROR*: #{error_type}: #{error_message}",
-        mrkdwn: true
-      )
+    # TODO: make the following response creation into Response's instance method
+
+    model = chat_response["model"]
+    answer = "<@#{message.user.slack_id}> #{response.text}"
+    post_params = SlackBot.format_chat_gpt_response(
+      answer,
+      prompt_tokens: response.n_query_tokens,
+      completion_tokens: response.n_response_tokens,
+      model: model
+    )
+
+    posted_message = Utils.post_message(
+      channel: message.conversation.slack_id,
+      thread_ts: message.slack_thread_ts,
+      **post_params
+    )
+    logger.info posted_message.inspect
+
+    unless posted_message.ok
       error_query(message)
-    else
-      response = Response.new(
-        query: query,
-        text: response_text,
-        n_query_tokens: chat_response.dig("usage", "prompt_tokens"),
-        n_response_tokens: chat_response.dig("usage", "completion_tokens"),
-        body: chat_response,
-        slack_thread_ts: message.slack_thread_ts
-      )
-
-      # TODO: make the following response creation into Response's instance method
-
-      model = chat_response["model"]
-      answer = "<@#{message.user.slack_id}> #{response.text}"
-      post_params = SlackBot.format_chat_gpt_response(
-        answer,
-        prompt_tokens: response.n_query_tokens,
-        completion_tokens: response.n_response_tokens,
-        model: model
-      )
-
-      posted_message = Utils.post_message(
-        channel: message.conversation.slack_id,
-        thread_ts: message.slack_thread_ts,
-        **post_params
-      )
-
-      if posted_message.ok
-        logger.info posted_message.inspect
-
-        response.slack_ts = posted_message.ts
-        response.slack_thread_ts = message.slack_thread_ts
-
-        Query.transaction do
-          query.save!
-          response.save!
-        end
-      else
-        error_query(message)
-      end
+      return
     end
 
+    response.slack_ts = posted_message.ts
+    response.slack_thread_ts = message.slack_thread_ts
+
+    Query.transaction do
+      query.save!
+      response.save!
+    end
   end
 
   private def start_query(message, name=REACTION_SYMBOL)
