@@ -12,6 +12,20 @@ class ChatCompletionJobOptionsTest < ActiveSupport::TestCase
     assert_equal ["gpt-3.5-turbo", 1.5, 0.5, true],
                  [options.model, options.temperature, options.top_p, options.no_default_prompt]
   end
+
+  test "validate_model!" do
+    assert_nothing_raised do
+      ChatCompletionJob::Options.new("model" => "gpt-3.5-turbo").validate_model!
+    end
+
+    assert_nothing_raised do
+      ChatCompletionJob::Options.new("model" => "gpt-4").validate_model!
+    end
+
+    assert_nothing_raised do
+      ChatCompletionJob::Options.new("model" => "xxx-gpt35turbo-456").validate_model!
+    end
+  end
 end
 
 

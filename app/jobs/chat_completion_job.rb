@@ -7,6 +7,7 @@ class ChatCompletionJob < ApplicationJob
   VALID_MODELS = [
     "gpt-3.5-turbo".freeze,
     "gpt-3.5-turbo-0301".freeze,
+    /\bgpt35turbo\b/.freeze,
     "gpt-4".freeze,
     "gpt-4-0314".freeze,
   ].freeze
@@ -29,9 +30,15 @@ class ChatCompletionJob < ApplicationJob
     end
 
     def validate_model!
-      unless ChatCompletionJob::VALID_MODELS.include? model
-        raise InvalidOptionError, "Invalid model is specified: #{model}"
+      ChatCompletionJob::VALID_MODELS.each do |valid_model|
+        case valid_model
+        when Regexp
+          return if valid_model.match?(model)
+        else
+          return if model == valid_model
+        end
       end
+      raise InvalidOptionError, "Invalid model is specified: #{model}"
     end
 
     def validate_temperature!
