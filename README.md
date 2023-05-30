@@ -21,9 +21,9 @@
 
 ## Model Name
 
-When you use this with Azure OpenAI Service, you need to include `gpt35turbo`
-section in the model like `abc-gpt35turbo-001`. Chatbot detects the model
-version and its unit price by checking the existence of `gpt35turbo`.
+When you use this with Azure OpenAI Service, you need to include `gpt-35-turbo`
+section in the model like `abc-gpt-35-turbo-001`. Chatbot detects the model
+version and its unit price by checking the existence of `gpt-35-turbo`.
 
 ## License
 

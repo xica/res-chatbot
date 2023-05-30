@@ -42,14 +42,14 @@ class UtilsTest < ActiveSupport::TestCase
 
       Utils.chat_completion(
         { "role" => "user", "content" => "Hello ChatGPT" },
-        model: "gpt-3.5-turbo",
+        model: "gpt-35-turbo",
         temperature: 0.8
       )
 
       assert_requested(
         :post, "https://test.openai.azure.com/openai/deployments/test-gpt35turbo-001/chat/completions?api_version=2023-03-15-preview",
         body: {
-          "model" => "gpt-3.5-turbo",
+          "model" => "gpt-35-turbo",
           "messages" => [
             { "role" => "user", "content" => "Hello ChatGPT" },
           ],

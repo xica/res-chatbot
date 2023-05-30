@@ -23,7 +23,7 @@ class ChatCompletionJobOptionsTest < ActiveSupport::TestCase
     end
 
     assert_nothing_raised do
-      ChatCompletionJob::Options.new("model" => "xxx-gpt35turbo-456").validate_model!
+      ChatCompletionJob::Options.new("model" => "xxx-gpt-35-turbo-456").validate_model!
     end
   end
 end

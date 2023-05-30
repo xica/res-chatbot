@@ -5,11 +5,14 @@ class ChatCompletionJob < ApplicationJob
   queue_as :default
 
   VALID_MODELS = [
+    # OpenAI API
     "gpt-3.5-turbo".freeze,
     "gpt-3.5-turbo-0301".freeze,
-    /\bgpt35turbo\b/.freeze,
     "gpt-4".freeze,
     "gpt-4-0314".freeze,
+
+    # Azure OpenAI Service
+    /\bgpt-35-turbo\b/.freeze,
   ].freeze
 
   DEFAULT_MODEL = VALID_MODELS[0]
