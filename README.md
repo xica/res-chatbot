@@ -19,6 +19,12 @@
 * `users:read`
 * `users:read:email`
 
+## Model Name
+
+When you use this with Azure OpenAI Service, you need to include `gpt35turbo`
+section in the model like `abc-gpt35turbo-001`. Chatbot detects the model
+version and its unit price by checking the existence of `gpt35turbo`.
+
 ## License
 
 MIT License
