@@ -24,7 +24,19 @@ module OpenAIExtension
       when :openai, "openai"
         super
       when :azure, "azure"
-        OpenAI.configuration.uri_base + path + "?api_version=#{OpenAI.configuration.api_version}"
+        OpenAI.configuration.uri_base + path + "?api-version=#{OpenAI.configuration.api_version}"
+      end
+    end
+
+    def headers
+      case OpenAI.configuration.api_type
+      when :openai, "openai"
+        super
+      when :azure, "azure"
+        {
+          "Content-Type" => "application/json",
+          "api-key" => OpenAI.configuration.access_token
+        }
       end
     end
   end
