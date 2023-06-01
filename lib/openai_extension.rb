@@ -24,7 +24,7 @@ module OpenAIExtension
       when :openai, "openai"
         super
       when :azure, "azure"
-        OpenAI.configuration.uri_base + path + "?api_version=#{OpenAI.configuration.api_version}"
+        OpenAI.configuration.uri_base + path + "?api-version=#{OpenAI.configuration.api_version}"
       end
     end
   end
