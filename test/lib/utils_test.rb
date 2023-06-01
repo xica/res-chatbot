@@ -23,6 +23,42 @@ class UtilsTest < ActiveSupport::TestCase
     )
   end
 
+  class OnAzureOpenAIServiceTest < ActiveSupport::TestCase
+    def setup
+      @saved_configuration = OpenAI.configuration
+      OpenAI.configuration = OpenAI.configuration.dup
+
+      OpenAI.configuration.api_type = :azure
+      OpenAI.configuration.uri_base = "https://test.openai.azure.com/openai/deployments/test-gpt35turbo-001"
+      OpenAI.configuration.api_version = "2023-03-15-preview"
+    end
+
+    def teardown
+      OpenAI.configuration = @saved_configuration
+    end
+
+    test "chat_completion" do
+      stub_request(:post, "https://test.openai.azure.com/openai/deployments/test-gpt35turbo-001/chat/completions?api_version=2023-03-15-preview")
+
+      Utils.chat_completion(
+        { "role" => "user", "content" => "Hello ChatGPT" },
+        model: "gpt-35-turbo",
+        temperature: 0.8
+      )
+
+      assert_requested(
+        :post, "https://test.openai.azure.com/openai/deployments/test-gpt35turbo-001/chat/completions?api_version=2023-03-15-preview",
+        body: {
+          "model" => "gpt-35-turbo",
+          "messages" => [
+            { "role" => "user", "content" => "Hello ChatGPT" },
+          ],
+          "temperature" => 0.8
+        }
+      )
+    end
+  end
+
   class MakeFirstMessagesTest < ActiveSupport::TestCase
     test "with prompt that includes '{query_body}'" do
       prompt = "abc\n{query_body}\nxyz"

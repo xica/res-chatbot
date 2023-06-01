@@ -139,4 +139,37 @@ class ActiveSupport::TestCase
       ENV.replace(save)
     end
   end
+
+  module OnAzureOpenAIService
+    def setup
+      super
+      @saved_configuration = OpenAI.configuration
+      OpenAI.configuration = OpenAI.configuration.dup
+
+      OpenAI.configuration.api_type = :azure
+      OpenAI.configuration.uri_base = "https://test.openai.azure.com/openai/deployments/test-gpt35turbo-001"
+      OpenAI.configuration.api_version = "2023-03-15-preview"
+    end
+
+    def teardown
+      super
+      OpenAI.configuration = @saved_configuration
+    end
+  end
+
+  unless defined? ActiveSupport::Testing::ConstantStubbing
+    module ConstantStubbing
+      def stub_const(mod, constant, new_value)
+        old_value = mod.const_get(constant, false)
+        mod.send(:remove_const, constant)
+        mod.const_set(constant, new_value)
+        yield
+      ensure
+        mod.send(:remove_const, constant)
+        mod.const_set(constant, old_value)
+      end
+    end
+
+    include ConstantStubbing
+  end
 end

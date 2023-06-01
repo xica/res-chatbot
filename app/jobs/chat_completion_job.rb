@@ -5,13 +5,17 @@ class ChatCompletionJob < ApplicationJob
   queue_as :default
 
   VALID_MODELS = [
+    # OpenAI API
     "gpt-3.5-turbo".freeze,
     "gpt-3.5-turbo-0301".freeze,
     "gpt-4".freeze,
     "gpt-4-0314".freeze,
+
+    # Azure OpenAI Service
+    /\bgpt-35-turbo\b/.freeze,
   ].freeze
 
-  DEFAULT_MODEL = VALID_MODELS[0]
+  DEFAULT_MODEL = ENV.fetch("DEFAULT_MODEL", VALID_MODELS[0])
 
   class InvalidOptionError < StandardError; end
 
@@ -29,9 +33,19 @@ class ChatCompletionJob < ApplicationJob
     end
 
     def validate_model!
-      unless ChatCompletionJob::VALID_MODELS.include? model
-        raise InvalidOptionError, "Invalid model is specified: #{model}"
+      if OpenAI.configuration.api_type == :azure
+        return if model.nil?
+      else
+        ChatCompletionJob::VALID_MODELS.each do |valid_model|
+          case valid_model
+          when Regexp
+            return if valid_model.match?(model)
+          else
+            return if model == valid_model
+          end
+        end
       end
+      raise InvalidOptionError, "Invalid model is specified: #{model}"
     end
 
     def validate_temperature!
@@ -82,6 +96,7 @@ class ChatCompletionJob < ApplicationJob
     end
   rescue Exception => error
     logger.error "ERROR: #{error.message}"
+    raise unless Rails.env.production?
   end
 
   private def process_query(message, options)

@@ -12,6 +12,39 @@ class ChatCompletionJobOptionsTest < ActiveSupport::TestCase
     assert_equal ["gpt-3.5-turbo", 1.5, 0.5, true],
                  [options.model, options.temperature, options.top_p, options.no_default_prompt]
   end
+
+  test "validate_model!" do
+    assert_nothing_raised do
+      ChatCompletionJob::Options.new("model" => "gpt-3.5-turbo").validate_model!
+    end
+
+    assert_nothing_raised do
+      ChatCompletionJob::Options.new("model" => "gpt-4").validate_model!
+    end
+
+    assert_nothing_raised do
+      ChatCompletionJob::Options.new("model" => "xxx-gpt-35-turbo-456").validate_model!
+    end
+  end
+
+  class OnAzureOpenAIServiceTest < ActiveSupport::TestCase
+    prepend OnAzureOpenAIService
+
+    # --model option is not allowed on Azure OpenAI Service
+    test "validate_model!" do
+      assert_raise(ChatCompletionJob::InvalidOptionError) do
+        ChatCompletionJob::Options.new("model" => "gpt-3.5-turbo").validate_model!
+      end
+
+      assert_raise(ChatCompletionJob::InvalidOptionError) do
+        ChatCompletionJob::Options.new("model" => "gpt-4").validate_model!
+      end
+
+      assert_nothing_raised do
+        ChatCompletionJob::Options.new("model" => nil).validate_model!
+      end
+    end
+  end
 end
 
 
@@ -199,6 +232,7 @@ class ChatCompletionJobTest < ActiveJob::TestCase
     include SlackTestHelper
 
     def teardown
+      super
       Rails.application.credentials.default_prompt = nil
     end
 
@@ -290,6 +324,96 @@ class ChatCompletionJobTest < ActiveJob::TestCase
         },
         actual_body
       )
+    end
+  end
+
+
+  class OnAzureOpenAIServiceTest < ActiveJob::TestCase
+    include SlackTestHelper
+    prepend OnAzureOpenAIService
+
+    test "normal case" do
+      stub_const(ChatCompletionJob, :DEFAULT_MODEL, "gpt-35-turbo") do
+        message = messages(:one)
+        channel = message.conversation
+        user = message.user
+        answer = "ABC"
+        expected_response = "<@#{user.slack_id}> #{answer}"
+
+        mock(Utils).chat_completion(
+          {
+            "role" => "user",
+            "content" => <<~END_CONTENT.chomp
+              You are ChatGPT, a large language model trained by OpenAI.
+              Answer as concisely as possible.
+              Current date: #{Time.now.strftime("%Y-%m-%d")}
+
+              #{message.text}
+            END_CONTENT
+          },
+          model: "gpt-35-turbo",
+          temperature: 0.7
+        ) do
+          {
+            "model" => "gpt-35-turbo",
+            "usage" => {
+              "prompt_tokens" => 70,
+              "completion_tokens" => 50,
+              "total_tokens" => 120
+            },
+            "choices" => [
+              {
+                "message" => {"content" => answer}
+              }
+            ]
+          }
+        end
+
+        stub_slack_api(:post, "chat.postMessage").to_return(body: {ok: true, ts: Time.now.to_f.to_s}.to_json)
+        stub_slack_api(:post, "reactions.add")
+        stub_slack_api(:post, "reactions.remove")
+
+        ChatCompletionJob.perform_now("message_id" => message.id)
+
+        actual_body = nil
+        assert_slack_api_called(:post, "chat.postMessage") do |request|
+          actual_body = decode_slack_client_request_body(request.body)
+        end
+
+        assert_slack_api_called(:post, "reactions.add",
+                                body: {
+                                  "channel" => channel.slack_id,
+                                  "timestamp" => message.slack_ts,
+                                  "name" => "hourglass_flowing_sand"
+                                })
+
+        assert_slack_api_called(:post, "reactions.remove",
+                                body: {
+                                  "channel" => channel.slack_id,
+                                  "timestamp" => message.slack_ts,
+                                  "name" => "hourglass_flowing_sand"
+                                })
+
+        assert_equal(
+          {
+            "channel" => channel.slack_id,
+            "text" => expected_response,
+            "blocks" => [
+              {
+                "type" => "section",
+                "text" => {
+                  "type" => "mrkdwn",
+                  "text" => expected_response
+                }
+              },
+              api_usage_block(70, 50, "gpt-35-turbo"),
+              feedback_action_block
+            ],
+            "thread_ts" => message.slack_thread_ts
+          },
+          actual_body
+        )
+      end
     end
   end
 end
