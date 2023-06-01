@@ -132,23 +132,32 @@ class ChatCompletionJob < ApplicationJob
     chat_response = Utils.chat_completion(*messages, model:, temperature:)
     logger.info "Chat Response:\n" + chat_response.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
 
-    if chat_response.key? "error"
-      # Error case:
-      #
-      # {"error"=>
-      #   {"message"=>
-      #     "You exceeded your current quota, please check your plan and billing details.",
-      #    "type"=>"insufficient_quota",
-      #    "param"=>nil,
-      #    "code"=>nil}}
+    unless chat_response.key? "choices"
+      if chat_response.key? "error"
+        # Error case:
+        #
+        # {"error"=>
+        #   {"message"=>
+        #     "You exceeded your current quota, please check your plan and billing details.",
+        #    "type"=>"insufficient_quota",
+        #    "param"=>nil,
+        #    "code"=>nil}}
 
-      error_type, error_message = chat_response["error"].values_at("type", "message")
-      Utils.post_message(
-        channel: message.conversation.slack_id,
-        thread_ts: message.slack_thread_ts,
-        text: ":#{ERROR_REACTION_SYMBOL}: *ERROR*: #{error_type}: #{error_message}",
-        mrkdwn: true
-      )
+        error_type, error_message = chat_response["error"].values_at("type", "message")
+        Utils.post_message(
+          channel: message.conversation.slack_id,
+          thread_ts: message.slack_thread_ts,
+          text: ":#{ERROR_REACTION_SYMBOL}: *ERROR*: #{error_type}: #{error_message}",
+          mrkdwn: true
+        )
+      else
+        Utils.post_message(
+          channel: message.conversation.slack_id,
+          thread_ts: message.slack_thread_ts,
+          text: ":#{ERROR_REACTION_SYMBOL}: *ERROR*: #{chat_response.inspect}",
+          mrkdwn: true
+        )
+      end
       error_query(message)
       return
     end
