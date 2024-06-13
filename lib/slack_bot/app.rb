@@ -71,7 +71,7 @@ module SlackBot
       when "event_callback"
         event = request_data["event"]
 
-        # Non-thread message:
+        # Non-thread message: {{{
         # {"client_msg_id"=>"58e6675f-c164-451a-8354-7c7085ddba33",
         #  "type"=>"app_mention",
         #  "text"=>"<@U04U7QNHCD9> 以下を日本語に翻訳してください:\n" + "\n" + "Brands and...",
@@ -89,8 +89,9 @@ module SlackBot
         #  "team"=>"T036WLG7F",
         #  "channel"=>"C036WLG7Z",
         #  "event_ts"=>"1679639978.922569"}
+        # }}}
 
-        # Reply in thread:
+        # Reply in thread: {{{
         # {"client_msg_id"=>"56846932-4600-4161-9947-a164084bf559",
         #  "type"=>"app_mention",
         #  "text"=>"<@U04U7QNHCD9> スレッド返信のテストです。",
@@ -109,6 +110,7 @@ module SlackBot
         #  "parent_user_id"=>"U04U7QNHCD9",
         #  "channel"=>"C036WLG7Z",
         #  "event_ts"=>"1679644228.326869"}
+        # }}}
 
         if event["type"] == "app_mention" || (event["type"] == "message" && event["channel_type"] == "im")
           channel = ensure_conversation(event["channel"])
@@ -137,6 +139,7 @@ module SlackBot
       payload = JSON.parse(params["payload"])
       case payload["type"]
       when "block_actions"
+        # Example payload: {{{
         # {"type"=>"block_actions",
         #  "user"=>
         #   {"id"=>"U02M703H8UD",
@@ -205,6 +208,7 @@ module SlackBot
         #     "style"=>"primary",
         #     "type"=>"button",
         #     "action_ts"=>"1680230940.375437"}]}
+        # }}}
 
         feedback_value = payload.dig("actions", 0, "value")
         response = Response.find_by!(slack_ts: payload["message"]["ts"])
