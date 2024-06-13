@@ -20,3 +20,11 @@ three:
   text: MyString
   slack_ts: 1680142578.5190222
   slack_thread_ts: 1680142578.5190222
+
+report_query_one:
+  conversation: magellan_rag
+  user: one
+  text: |
+    今後SNS広告を強化していくことが書かれた事例
+  slack_ts: 1680134278.1370368
+  slack_thread_ts: 1680134278.1370368

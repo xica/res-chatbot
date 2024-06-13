@@ -7,3 +7,7 @@ general:
 random:
   slack_id: C036WLG7T
   name: random
+
+magellan_rag:
+  slack_id: C036WLG7M
+  name: MAGELLAN RAG
