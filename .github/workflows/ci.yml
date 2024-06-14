@@ -15,12 +15,35 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: chatbot
+          POSTGRES_USER: chatbot
+          POSTGRES_DB: postgres
+
+        # Options for health check
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://chatbot:chatbot@localhost:5432/chatbot_test
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: ruby/setup-ruby@v1
 
       - run: bundle install --jobs 4 --retry 3
+
+      - run: bundle exec rails db:create RAILS_ENV=test
+      - run: bundle exec rails db:migrate RAILS_ENV=test
 
       - run: bundle exec rake test VERBOSE=1
         env:
