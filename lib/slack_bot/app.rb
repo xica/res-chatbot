@@ -27,12 +27,22 @@ module SlackBot
     end
 
     ALLOW_CHANNEL_IDS = ENV.fetch("ALLOW_CHANNEL_IDS", "").split(/\s+|,\s*/)
+    MAGELLAN_RAG_CHANNEL_IDS = ENV.fetch("MAGELLAN_RAG_CHANNEL_IDS", "").split(/\s+|,\s*/)
+    MAGELLAN_RAG_ENDPOINT = ENV.fetch("MAGELLAN_RAG_ENDPOINT", "localhost:12345")
 
     private def allowed_channel?(channel)
       if ALLOW_CHANNEL_IDS.empty?
         true
       else
         ALLOW_CHANNEL_IDS.include?(channel.slack_id)
+      end
+    end
+
+    private def magellan_rag_channel?(channel)
+      if MAGELLAN_RAG_CHANNEL_IDS.empty?
+        false
+      else
+        MAGELLAN_RAG_CHANNEL_IDS.include?(channel.slack_id)
       end
     end
 
@@ -61,6 +71,14 @@ module SlackBot
       status 400
     end
 
+    def mention?(event)
+      event["type"] == "app_mention"
+    end
+
+    def direct_message?(event)
+      event["type"] == "message" && event["channel_type"] == "im"
+    end
+
     post "/events" do
       request_data = JSON.parse(request.body.read)
 
@@ -71,7 +89,7 @@ module SlackBot
       when "event_callback"
         event = request_data["event"]
 
-        # Non-thread message:
+        # Non-thread message: {{{
         # {"client_msg_id"=>"58e6675f-c164-451a-8354-7c7085ddba33",
         #  "type"=>"app_mention",
         #  "text"=>"<@U04U7QNHCD9> 以下を日本語に翻訳してください:\n" + "\n" + "Brands and...",
@@ -89,8 +107,9 @@ module SlackBot
         #  "team"=>"T036WLG7F",
         #  "channel"=>"C036WLG7Z",
         #  "event_ts"=>"1679639978.922569"}
+        # }}}
 
-        # Reply in thread:
+        # Reply in thread: {{{
         # {"client_msg_id"=>"56846932-4600-4161-9947-a164084bf559",
         #  "type"=>"app_mention",
         #  "text"=>"<@U04U7QNHCD9> スレッド返信のテストです。",
@@ -109,15 +128,25 @@ module SlackBot
         #  "parent_user_id"=>"U04U7QNHCD9",
         #  "channel"=>"C036WLG7Z",
         #  "event_ts"=>"1679644228.326869"}
+        # }}}
 
-        if event["type"] == "app_mention" || (event["type"] == "message" && event["channel_type"] == "im")
+        if mention?(event) || direct_message?(event)
           channel = ensure_conversation(event["channel"])
           user = ensure_user(event["user"], channel)
           ts = event["ts"]
           thread_ts = event["thread_ts"]
           text = event["text"]
 
-          if allowed_channel?(channel)
+          case
+          when magellan_rag_channel?(channel)
+            logger.info "Event:\n" + event.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
+            logger.info "#{channel.slack_id}: #{text}"
+            if thread_ts and not thread_allowed_channel?(channel)
+              notify_do_not_allowed_thread_context(channel, user, ts)
+            else
+              process_magellan_rag_message(channel, user, ts, thread_ts, text)
+            end
+          when allowed_channel?(channel)
             logger.info "Event:\n" + event.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
             logger.info "#{channel.slack_id}: #{text}"
 
@@ -137,6 +166,7 @@ module SlackBot
       payload = JSON.parse(params["payload"])
       case payload["type"]
       when "block_actions"
+        # Example payload: {{{
         # {"type"=>"block_actions",
         #  "user"=>
         #   {"id"=>"U02M703H8UD",
@@ -205,6 +235,7 @@ module SlackBot
         #     "style"=>"primary",
         #     "type"=>"button",
         #     "action_ts"=>"1680230940.375437"}]}
+        # }}}
 
         feedback_value = payload.dig("actions", 0, "value")
         response = Response.find_by!(slack_ts: payload["message"]["ts"])
@@ -318,6 +349,7 @@ module SlackBot
       return unless text =~ /^<@#{bot_id}>\s+/
 
       message_body = Regexp.last_match.post_match
+
       options = process_options(message_body)
       return if options.nil?
 
@@ -370,6 +402,35 @@ module SlackBot
       end
 
       options
+    end
+
+    private def process_magellan_rag_message(channel, user, ts, thread_ts, text)
+      return unless text =~ /^<@#{bot_id}>\s+/
+
+      message_body = Regexp.last_match.post_match
+      options = process_magellan_rag_options(message_body)
+      return if options.nil?
+
+      begin
+        options.validate!
+      rescue MagellanRagQeuryJob::InvalidOptionError => error
+        reply_as_ephemeral(channel, user, ts, error.message)
+        return
+      end
+
+      message = Message.create!(
+        conversation: channel,
+        user: user,
+        text: message_body,
+        slack_ts: ts,
+        slack_thread_ts: thread_ts || ts
+      )
+      MagellanRagQeuryJob.perform_later("message_id" => message.id, "options" => options.to_h)
+    end
+
+    private def process_magellan_rag_options(message_body)
+      # TODO: implement options
+      MagellanRagQeuryJob::Options.new
     end
 
     private def check_command_permission!(channel, user)

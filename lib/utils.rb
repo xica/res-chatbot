@@ -64,3 +64,5 @@ module Utils
     messages
   end
 end
+
+require_relative "utils/magellan_rag"

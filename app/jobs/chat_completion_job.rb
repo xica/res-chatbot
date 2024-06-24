@@ -1,7 +1,7 @@
 require "slack_bot/utils"
 require "utils"
 
-class ChatCompletionJob < ApplicationJob
+class ChatCompletionJob < SlackResponseJob
   queue_as :default
 
   VALID_MODELS = [
@@ -221,23 +221,14 @@ class ChatCompletionJob < ApplicationJob
   end
 
   private def start_query(message, name=REACTION_SYMBOL)
-    client = Slack::Web::Client.new
-    client.reactions_add(channel: message.conversation.slack_id, timestamp: message.slack_ts, name:)
-  rescue
-    nil
+    start_response(message, name)
   end
 
   private def finish_query(message, name=REACTION_SYMBOL)
-    client = Slack::Web::Client.new
-    client.reactions_remove(channel: message.conversation.slack_id, timestamp: message.slack_ts, name:)
-  rescue
-    nil
+    finish_response(message, name)
   end
 
   private def error_query(message, name=ERROR_REACTION_SYMBOL)
-    client = Slack::Web::Client.new
-    client.reactions_add(channel: message.conversation.slack_id, timestamp: message.slack_ts, name:)
-  rescue
-    nil
+    error_response(message, name)
   end
 end
