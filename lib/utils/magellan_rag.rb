@@ -5,7 +5,7 @@ module Utils
     DEFAULT_ENDPOINT = "http://localhost:8000"
 
     module_function def endpoint
-      ENV.fetch("REPORT_RAG_API", DEFAULT_ENDPOINT)
+      ENV.fetch("MAGELLAN_RAG_ENDPOINT", DEFAULT_ENDPOINT)
     end
 
     module_function def generate_answer(query)
