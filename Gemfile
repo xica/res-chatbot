@@ -37,6 +37,7 @@ gem "sidekiq", "~> 7"
 gem "sinatra"
 gem "sinatra-contrib", require: false
 gem "slack-ruby-client"
+gem "faraday"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem

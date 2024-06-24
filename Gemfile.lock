@@ -293,6 +293,7 @@ DEPENDENCIES
   cssbundling-rails
   database_rewinder
   debug
+  faraday
   jbuilder
   jsbundling-rails
   pg (~> 1.1)
