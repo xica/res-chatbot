@@ -137,24 +137,36 @@ module SlackBot
           thread_ts = event["thread_ts"]
           text = event["text"]
 
-          case
-          when magellan_rag_channel?(channel)
-            logger.info "Event:\n" + event.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
-            logger.info "#{channel.slack_id}: #{text}"
-            if thread_ts and not thread_allowed_channel?(channel)
-              notify_do_not_allowed_thread_context(channel, user, ts)
-            else
-              process_magellan_rag_message(channel, user, ts, thread_ts, text)
-            end
-          when allowed_channel?(channel)
-            logger.info "Event:\n" + event.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
-            logger.info "#{channel.slack_id}: #{text}"
+          begin
+            case
+            when magellan_rag_channel?(channel)
+              logger.info "Event:\n" + event.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
+              logger.info "#{channel.slack_id}: #{text}"
+              if thread_ts and not thread_allowed_channel?(channel)
+                notify_do_not_allowed_thread_context(channel, user, ts)
+              else
+                process_magellan_rag_message(channel, user, ts, thread_ts, text)
+              end
+            when allowed_channel?(channel)
+              logger.info "Event:\n" + event.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
+              logger.info "#{channel.slack_id}: #{text}"
 
-            if thread_ts and not thread_allowed_channel?(channel)
-              notify_do_not_allowed_thread_context(channel, user, ts)
-            else
-              process_message(channel, user, ts, thread_ts, text)
+              if thread_ts and not thread_allowed_channel?(channel)
+                notify_do_not_allowed_thread_context(channel, user, ts)
+              else
+                process_message(channel, user, ts, thread_ts, text)
+              end
             end
+          rescue Exception => err
+            Utils.post_message(
+              channel: channel.slack_id,
+              thread_ts: thread_ts,
+              text: [
+                ":bangbang: *ERROR*: #{err.message}",
+                *err.backtrace
+              ].join("\n"),
+              mrkdwn: true
+            )
           end
         end
 
@@ -413,7 +425,7 @@ module SlackBot
 
       begin
         options.validate!
-      rescue MagellanRagQeuryJob::InvalidOptionError => error
+      rescue MagellanRagQueryJob::InvalidOptionError => error
         reply_as_ephemeral(channel, user, ts, error.message)
         return
       end
@@ -425,12 +437,12 @@ module SlackBot
         slack_ts: ts,
         slack_thread_ts: thread_ts || ts
       )
-      MagellanRagQeuryJob.perform_later("message_id" => message.id, "options" => options.to_h)
+      MagellanRagQueryJob.perform_later("message_id" => message.id, "options" => options.to_h)
     end
 
     private def process_magellan_rag_options(message_body)
       # TODO: implement options
-      MagellanRagQeuryJob::Options.new
+      MagellanRagQueryJob::Options.new
     end
 
     private def check_command_permission!(channel, user)
