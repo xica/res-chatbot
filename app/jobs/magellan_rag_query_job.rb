@@ -15,11 +15,13 @@ class MagellanRagQueryJob < SlackResponseJob
 
   Options = Struct.new(
     :model,
+    :retrieval_only,
     keyword_init: true
   ) do
     def initialize(**kw)
       super
       self.model ||= DEFAULT_MODEL
+      self.retrieval_only = false if self.retrieval_only.nil?
     end
 
     def validate!
@@ -91,7 +93,12 @@ class MagellanRagQueryJob < SlackResponseJob
       }
     )
 
-    rag_response = Utils::MagellanRAG.generate_answer(message.text)
+    if options.retrieval_only
+      documents = Utils::MagellanRAG.retrieve_documents(message.text)
+      rag_response = format_relevant_documents(documents)
+    else
+      rag_response = Utils::MagellanRAG.generate_answer(message.text)
+    end
     logger.info "RAG Response:\n" + rag_response.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
 
     unless rag_response.key? "answer"
@@ -141,6 +148,27 @@ class MagellanRagQueryJob < SlackResponseJob
       query.save!
       response.save!
     end
+  end
+
+  private def format_relevant_documents(documents)
+    s = documents.map.with_index {|doc, i|
+      company_name = doc.dig("metadata", "company_name")
+      file_name = doc.dig("metadata", "file_name")
+      file_url = doc.dig("metadata", "file_url")
+      content = doc["content"]
+
+      header = "# Doc-#{i}"
+      header << ": #{company_name}" if company_name
+
+      file_name = file_name ? "* file_name = #{file_name}\n" : ""
+      file_url = file_url ? "* file_url = #{file_url}\n" : ""
+
+      <<~END_FORMAT
+      #{header}
+      #{file_name}#{file_url}#{content}
+      END_FORMAT
+    }.join("\n\n")
+    {"answer" => s}
   end
 
   private def format_rag_response(answer, user:)

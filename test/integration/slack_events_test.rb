@@ -542,4 +542,120 @@ class SlackEventsTest < ActionDispatch::IntegrationTest
       actual_body
     )
   end
+
+
+  test "app_mention event from a channel for Magellan RAG with --retrieval option" do
+    slack_ts = Time.now.to_f.to_s
+    channel = conversations(:magellan_rag)
+    user = users(:one)
+    query_body = "ZZZ"
+    query = "<@TEST_BOT_ID> --retrieval #{query_body}"
+
+    any_instance_of(SlackBot::Application) do |klass|
+      stub(klass).magellan_rag_channel? do |ch|
+        ch.slack_id == channel.slack_id
+      end
+    end
+
+    stub_slack_api(:post, "chat.postMessage").to_return(body: { "ok" => true, "ts" => Time.now.to_f.to_s }.to_json)
+
+    # Check the case when missing reactions:write scope
+    stub_slack_api(:post, "reactions.add").to_return { raise Slack::Web::Api::Errors::MissingScope, "missing_scope" }
+    stub_slack_api(:post, "reactions.remove").to_return { raise Slack::Web::Api::Errors::MissingScope, "missing_scope" }
+
+    assert Message.find_by(conversation: channel, user: user, slack_ts: slack_ts).blank?
+
+    assert_enqueued_with(job: MagellanRagQueryJob) do
+      params = {
+        type: "event_callback",
+        event: {
+          type: "app_mention",
+          text: query,
+          channel: channel.slack_id,
+          user: user.slack_id,
+          ts: slack_ts
+        }
+      }
+      request_body = ActionDispatch::RequestEncoder.encoder(:json).encode_params(params)
+      timestamp = slack_ts.to_i
+      headers = {
+        "X-Slack-Request-Timestamp": timestamp,
+        "X-Slack-Signature": compute_request_signature(timestamp, request_body)
+      }
+
+      post "/slack/events", params:, headers:, as: :json
+    end
+
+    message = Message.find_by!(conversation: channel, user: user, slack_ts: slack_ts)
+    assert_equal([
+                   query_body,
+                   slack_ts,
+                 ],
+                 [
+                   message.text,
+                   message.slack_thread_ts,
+                 ])
+
+    mock(Utils::MagellanRAG).endpoint do
+      "http://report-rag-api.test"
+    end
+
+    stub_request(
+      :get, "http://report-rag-api.test/retrieve_documents"
+    ).with(
+      query: {"query" => "ZZZ"}
+    ).to_return_json(
+      status: 200,
+      body: [
+        {
+          "metadata" => {
+            "company_name" => "Xica",
+            "file_name" => "xica_report.pdf",
+            "file_url" => "https://example.com/xyzzy/xica_report.pdf",
+          },
+          "content" => "ABC"
+        }
+      ]
+    )
+
+    expected_response = <<~END_BODY
+    <@#{user.slack_id}> # Doc-0: Xica
+    * file_name = xica_report.pdf
+    * file_url = https://example.com/xyzzy/xica_report.pdf
+    ABC
+    END_BODY
+
+    perform_enqueued_jobs
+
+    assert_response :success
+
+    actual_body = nil
+    assert_slack_api_called(:post, "chat.postMessage") do |request|
+      actual_body = decode_slack_client_request_body(request.body)
+    end
+
+    query = Query.find_by!(message: message)
+    assert_kind_of Hash, query.body
+    response = Response.find_by!(query: query)
+    assert_kind_of Hash, response.body
+
+    assert_equal(
+      {
+        "channel" => channel.slack_id,
+        "text" => expected_response,
+        "thread_ts" => slack_ts,
+        "blocks" => [
+          {
+            "type" => "section",
+            "text" => {
+              "type" => "mrkdwn",
+              "text" => expected_response,
+            }
+          },
+          feedback_action_block
+        ]
+      },
+      actual_body
+    )
+  end
 end

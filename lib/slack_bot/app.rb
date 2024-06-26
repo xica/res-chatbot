@@ -432,7 +432,7 @@ module SlackBot
       return unless text =~ /^<@#{bot_id}>\s+/
 
       message_body = Regexp.last_match.post_match
-      options = process_magellan_rag_options(message_body)
+      options, message_body = process_magellan_rag_options(message_body)
       logger.info "process_magellan_rag_message: options=#{options}"
       return if options.nil?
 
@@ -456,8 +456,26 @@ module SlackBot
     end
 
     private def process_magellan_rag_options(message_body)
-      # TODO: implement options
-      MagellanRagQueryJob::Options.new
+      first_line = message_body.each_line.first
+      rest_lines = message_body[(first_line.length + 1)..]
+
+      options = MagellanRagQueryJob::Options.new
+      return options, message_body unless first_line.match? /\A--\w+/
+
+      args = first_line.strip.split(" ")
+      not_args = []
+      args.each do |arg|
+        case arg
+        when "--retrieval"
+          options.retrieval_only = true
+        else
+          not_args << arg
+        end
+      end
+
+      first_line = not_args.join(" ")
+      message_body = [first_line, rest_lines].join("\n").strip
+      [options, message_body]
     end
 
     private def check_command_permission!(channel, user)

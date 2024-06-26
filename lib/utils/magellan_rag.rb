@@ -13,5 +13,11 @@ module Utils
       response = Faraday.get(uri, {"query": query})
       JSON.load(response.body)
     end
+
+    module_function def retrieve_documents(query)
+      uri = File.join(endpoint, "retrieve_documents")
+      response = Faraday.get(uri, {"query": query})
+      JSON.load(response.body)
+    end
   end
 end
