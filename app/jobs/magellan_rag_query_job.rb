@@ -1,3 +1,6 @@
+require "slack_bot/utils"
+require "utils"
+
 class MagellanRagQueryJob < SlackResponseJob
   queue_as :default
 
