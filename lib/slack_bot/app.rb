@@ -30,6 +30,15 @@ module SlackBot
     MAGELLAN_RAG_CHANNEL_IDS = ENV.fetch("MAGELLAN_RAG_CHANNEL_IDS", "").split(/\s+|,\s*/)
     MAGELLAN_RAG_ENDPOINT = ENV.fetch("MAGELLAN_RAG_ENDPOINT", "localhost:12345")
 
+    [
+      :ALLOW_CHANNEL_IDS,
+      :MAGELLAN_RAG_CHANNEL_IDS,
+      :MAGELLAN_RAG_ENDPOINT,
+    ].each do |name|
+      value = const_get(name)
+      logger.info "#{name}: #{value.inspect}"
+    end
+
     private def allowed_channel?(channel)
       if ALLOW_CHANNEL_IDS.empty?
         true
@@ -156,6 +165,8 @@ module SlackBot
               else
                 process_message(channel, user, ts, thread_ts, text)
               end
+            else
+              logger.info "A message coming from the channel #{channel.slack_id} is ignored."
             end
           rescue Exception => err
             Utils.post_message(
