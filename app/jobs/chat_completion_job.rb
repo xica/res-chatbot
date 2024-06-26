@@ -10,6 +10,7 @@ class ChatCompletionJob < SlackResponseJob
     "gpt-3.5-turbo-0301".freeze,
     "gpt-4".freeze,
     "gpt-4-0314".freeze,
+    "gpt-4o".freeze,
 
     # Azure OpenAI Service
     /\bgpt-35-turbo\b/.freeze,
