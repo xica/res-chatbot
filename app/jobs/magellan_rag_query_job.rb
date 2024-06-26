@@ -71,7 +71,7 @@ class MagellanRagQueryJob < SlackResponseJob
       finish_response(message)
     end
   rescue Exception => error
-    logger.error "ERROR: #{error.message}"
+    logger.error "ERROR: #{error.message}\n#{error.backtrace.join("\n")}"
     raise unless Rails.env.production?
   end
 
