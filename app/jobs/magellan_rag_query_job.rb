@@ -151,6 +151,7 @@ class MagellanRagQueryJob < SlackResponseJob
   end
 
   private def format_relevant_documents(documents)
+    logger.info "[format_relevant_documents] documents=#{documents.inspect}"
     s = documents.map.with_index {|doc, i|
       company_name = doc.dig("metadata", "company_name")
       file_name = doc.dig("metadata", "file_name")
