@@ -9,7 +9,7 @@ class MagellanRagQueryJob < SlackResponseJob
     "gpt-4o".freeze,
   ]
 
-  DEFAULT_MODEL = ENV.fetch("DEFAULT_MODEL", VALID_MODELS[0])
+  DEFAULT_MODEL = ENV.fetch("MAGELLAN_RAG_DEFAULT_MODEL", VALID_MODELS[0])
 
   class InvalidOptionError < StandardError; end
 
