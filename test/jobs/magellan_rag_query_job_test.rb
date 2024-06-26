@@ -5,6 +5,7 @@ class MagellanRagQueryJobOptionsTest < ActiveSupport::TestCase
     options = MagellanRagQueryJob::Options.new
     assert_equal("gpt-4o",
                  options.model)
+    assert_nil options.validate!
   end
 
   test "creation from a hash" do
