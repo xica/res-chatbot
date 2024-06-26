@@ -433,11 +433,13 @@ module SlackBot
 
       message_body = Regexp.last_match.post_match
       options = process_magellan_rag_options(message_body)
+      logger.info "process_magellan_rag_message: options=#{options}"
       return if options.nil?
 
       begin
         options.validate!
       rescue MagellanRagQueryJob::InvalidOptionError => error
+        logger.warn "process_magellan_rag_message: options.validate! failed"
         reply_as_ephemeral(channel, user, ts, error.message)
         return
       end
@@ -449,6 +451,7 @@ module SlackBot
         slack_ts: ts,
         slack_thread_ts: thread_ts || ts
       )
+      logger.info "process_magellan_rag_message: message=#{message}"
       MagellanRagQueryJob.perform_later("message_id" => message.id, "options" => options.to_h)
     end
 
