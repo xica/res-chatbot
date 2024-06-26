@@ -428,6 +428,7 @@ module SlackBot
     end
 
     private def process_magellan_rag_message(channel, user, ts, thread_ts, text)
+      logger.info "process_magellan_rag_message: channel=#{channel.slack_id}, user=#{user.slack_id}, ts=#{ts}, thread_ts=#{thread_ts}, text=#{text}"
       return unless text =~ /^<@#{bot_id}>\s+/
 
       message_body = Regexp.last_match.post_match
