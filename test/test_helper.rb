@@ -7,6 +7,7 @@ ENV["SLACK_SIGNING_SECRET"] = "3d3dbfb61ac7935eefb4b4d8f5aaf930"
 require_relative "../config/environment"
 require "database_rewinder"
 require "openssl"
+require "pathname"
 require "rails/test_help"
 require "rr"
 require "sidekiq/testing"
@@ -25,6 +26,10 @@ class ActiveSupport::TestCase
     queries
     responses
   )
+
+  def fixture_file_path(relpath)
+    Pathname(__FILE__).parent.join("fixtures", "files", relpath)
+  end
 
   # Add more helper methods to be used by all tests here...
   module DatabaseRewinderSupport

@@ -20,11 +20,18 @@ class MagellanRagQueryJobTest < ActiveSupport::TestCase
     message = messages(:report_query_one)
     channel = message.conversation
     user = message.user
-    answer = "DUMMY RAG ANSWER"
-    expected_response = "<@#{user.slack_id}> #{answer}"
+
+    rag_answer = <<~END_ANSWER.strip
+    花王株式会社_エッセンシャルの事例では、TVCMの残存週が他社（11週）と比べて13週と長いと報告されています。
+    詳細は以下のファイルで確認できます。
+    - ファイル名: 【花王様】エッセンシャル_初回レポート報告_20221125.pdf
+    - ファイルのURL: [こちら](https://drive.google.com/file/d/1MB_IerrxHZ_Dn3ziT7vPixaOF_ng84D3/preview?authuser=0)
+    - 該当部分: 「15秒・30秒・60秒ともに他施策と比べて効率は良好。残存週は他社（11週）と比べて、13週と長い。」
+    END_ANSWER
+    expected_response = "<@#{user.slack_id}> 次の1件の文書が質問に該当する可能性があります。\n\n#{rag_answer}"
 
     mock(Utils::MagellanRAG).generate_answer(message.text) do
-      {"answer" => answer}
+      {"answer" => rag_answer}
     end
 
     stub_slack_api(:post, "chat.postMessage").to_return(body: {ok: true, ts: Time.now.to_f.to_s}.to_json)
@@ -55,18 +62,58 @@ class MagellanRagQueryJobTest < ActiveSupport::TestCase
     assert_equal(
       {
         "channel" => channel.slack_id,
+        "thread_ts" => message.slack_thread_ts,
         "text" => expected_response,
         "blocks" => [
           {
             "type" => "section",
             "text" => {
               "type" => "mrkdwn",
-              "text" => expected_response,
+              "text" => expected_response.each_line.first.strip,
             },
           },
+          {
+            "type" => "rich_text",
+            "elements" => [
+              {
+                "type" => "rich_text_section",
+                "elements" => [
+                  "type" => "text",
+                  "text" => "花王株式会社_エッセンシャルの事例では、TVCMの残存週が他社（11週）と比べて13週と長いと報告されています。\n詳細は以下のファイルで確認できます。"
+                ]
+              },
+              {
+                "type" => "rich_text_list",
+                "style" => "bullet",
+                "indent" => 0,
+                "elements" => [
+                  {
+                    "type" => "rich_text_section",
+                    "elements" => [
+                      {"type" => "text", "text" => "ファイル: "},
+                      {
+                        "type" => "link",
+                        "url" => "https://drive.google.com/file/d/1MB_IerrxHZ_Dn3ziT7vPixaOF_ng84D3/preview?authuser=0",
+                        "text" => "【花王様】エッセンシャル_初回レポート報告_20221125.pdf"
+                      }
+                    ]
+                  },
+                  {
+                    "type" => "rich_text_section",
+                    "elements" => [
+                      {
+                        "type" => "text",
+                        "text" => "該当部分: 「15秒・30秒・60秒ともに他施策と比べて効率は良好。残存週は他社（11週）と比べて、13週と長い。」"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {"type" => "divider"},
           feedback_action_block
-        ],
-        "thread_ts" => message.slack_thread_ts
+        ]
       },
       actual_body
     )
