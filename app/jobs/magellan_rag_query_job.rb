@@ -113,6 +113,7 @@ class MagellanRagQueryJob < SlackResponseJob
     end
 
     answer = rag_response["answer"]
+    logger.info "RAG Answer length: #{answer.length}"
     logger.info "RAG Answer:\n" + answer.each_line.map {|l| "> #{l}" }.join("")
 
     response = Response.new(
