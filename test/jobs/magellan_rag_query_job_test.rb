@@ -118,4 +118,14 @@ class MagellanRagQueryJobTest < ActiveSupport::TestCase
       actual_body
     )
   end
+
+  test "query = 成果最大化シミュレーションを実施した事例を教えてください" do
+    skip "TODO"
+    message = messages(:report_query_one)
+    channel = message.conversation
+    user = message.user
+
+    rag_answer = JSON.load(fixture_file_path("rag_answer-002.json").read)["answer"]
+    # p rag_answer
+  end
 end

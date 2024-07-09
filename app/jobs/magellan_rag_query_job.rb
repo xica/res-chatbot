@@ -129,11 +129,26 @@ class MagellanRagQueryJob < SlackResponseJob
       user: message.user
     )
 
-    posted_message = Utils.post_message(
-      channel: message.conversation.slack_id,
-      thread_ts: message.slack_thread_ts,
-      **post_params
-    )
+    begin
+      posted_message = Utils.post_message(
+        channel: message.conversation.slack_id,
+        thread_ts: message.slack_thread_ts,
+        **post_params
+      )
+    rescue Exception => err
+      logger.warn "Error occurred on post_message: #{err.full_message(highlight: false)}"
+
+      post_params = format_simple_rag_response(
+        answer,
+        user: message.user
+      )
+
+      posted_message = Utils.post_message(
+        channel: message.conversation.slack_id,
+        thread_ts: message.slack_thread_ts,
+        **post_params
+      )
+    end
     logger.info posted_message.inspect
 
     unless posted_message.ok
@@ -170,6 +185,20 @@ class MagellanRagQueryJob < SlackResponseJob
       END_FORMAT
     }.join("\n\n")
     {"answer" => s}
+  end
+
+  private def format_simple_rag_response(answer, user:)
+    answer = rewrite_markdown_link(answer)
+    text = "<@#{user.slack_id}> 回答は次のとおりです。\n\n#{answer}"
+    response = SlackBot.format_chat_gpt_response(text)
+    feedback_block = response[:blocks].pop
+    response[:blocks] << { "type": "divider" }
+    response[:blocks] << feedback_block
+    response
+  end
+
+  private def rewrite_markdown_link(s)
+    s.gsub(/\[(.+?)\]\((.+?)\)/) { "<#{$2}|#{$1}>" }
   end
 
   private def format_rag_response(answer, user:)
