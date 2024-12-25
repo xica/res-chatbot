@@ -4,6 +4,8 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 ruby ">= 3.1.2"
 
 gem "rails", "~> 7.0.4", ">= 7.0.4.3"
+gem "rexml"
+gem "rss"
 gem "sprockets-rails"
 gem "pg", "~> 1.1"
 gem "puma", "~> 5.0"
@@ -33,6 +35,8 @@ gem "bootsnap", require: false
 
 # For SlackBot application
 gem "ruby-openai"
+gem "aws-sdk-core"
+gem "opensearch-aws-sigv4"
 gem "sidekiq", "~> 7"
 gem "sinatra"
 gem "sinatra-contrib", require: false

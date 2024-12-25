@@ -25,4 +25,8 @@ class SlackResponseJob < ApplicationJob
   rescue
     nil
   end
+
+  private def rewrite_markdown_link(s)
+    s.gsub(/\[(.+?)\]\((.+?)\)/) { "<#{$2}|#{$1}>" }
+  end
 end

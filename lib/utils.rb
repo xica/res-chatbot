@@ -1,15 +1,34 @@
 module Utils
-  module_function def chat_completion(*messages, model: nil, temperature: nil)
+  module_function def chat_completion(*messages,
+                                      model: nil,
+                                      temperature: nil,
+                                      max_tokens: nil,
+                                      top_p: nil,
+                                      frequency_penalty: nil,
+                                      presence_penalty: nil
+                                     )
     params = {
-      parameters: {
-        model: model || "gpt-3.5-turbo",
-        messages: messages,
-        temperature: temperature || 0.7
-      }
+      model: model || "gpt-3.5-turbo",
+      messages: messages,
+      temperature: temperature || 0.7
     }
 
+    params[:max_tokens] = max_tokens unless max_tokens.nil?
+    params[:top_p] = top_p unless top_p.nil?
+    params[:frequency_penalty] = frequency_penalty unless frequency_penalty.nil?
+    params[:presence_penalty] = presence_penalty unless presence_penalty.nil?
+
     client = OpenAI::Client.new
-    client.chat(**params)
+    client.chat(parameters: params)
+  end
+
+  module_function def calculate_embeddings(input, model:, dims:)
+    client = OpenAI::Client.new
+    client.embeddings(parameters: {
+      model: model,
+      dimensions: dims,
+      input: input
+    })
   end
 
   module_function def post_message(channel:, text:, **params)

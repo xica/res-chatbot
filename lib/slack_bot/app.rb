@@ -29,11 +29,13 @@ module SlackBot
     ALLOW_CHANNEL_IDS = ENV.fetch("ALLOW_CHANNEL_IDS", "").split(/\s+|,\s*/)
     MAGELLAN_RAG_CHANNEL_IDS = ENV.fetch("MAGELLAN_RAG_CHANNEL_IDS", "").split(/\s+|,\s*/)
     MAGELLAN_RAG_ENDPOINT = ENV.fetch("MAGELLAN_RAG_ENDPOINT", "localhost:12345")
+    REGULATION_RAG_CHANNEL_IDS = ENV.fetch("REGULATION_RAG_CHANNEL_IDS", "C07V94148PK C087CJU8E1E").split(/\s+|,\s*/)
 
     [
       :ALLOW_CHANNEL_IDS,
       :MAGELLAN_RAG_CHANNEL_IDS,
       :MAGELLAN_RAG_ENDPOINT,
+      :REGULATION_RAG_CHANNEL_IDS,
     ].each do |name|
       value = const_get(name)
       logger.info "#{name}: #{value.inspect}"
@@ -52,6 +54,14 @@ module SlackBot
         false
       else
         MAGELLAN_RAG_CHANNEL_IDS.include?(channel.slack_id)
+      end
+    end
+
+    private def regulation_rag_channel?(channel)
+      if REGULATION_RAG_CHANNEL_IDS.empty?
+        false
+      else
+        REGULATION_RAG_CHANNEL_IDS.include?(channel.slack_id)
       end
     end
 
@@ -155,6 +165,14 @@ module SlackBot
                 notify_do_not_allowed_thread_context(channel, user, ts)
               else
                 process_magellan_rag_message(channel, user, ts, thread_ts, text)
+              end
+            when regulation_rag_channel?(channel)
+              logger.info "Event:\n" + event.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
+              logger.info "#{channel.slack_id}: #{text}"
+              if thread_ts and not thread_allowed_channel?(channel)
+                notify_do_not_allowed_thread_context(channel, user, ts)
+              else
+                process_regulation_rag_message(channel, user, ts, thread_ts, text)
               end
             when allowed_channel?(channel)
               logger.info "Event:\n" + event.pretty_inspect.each_line.map {|l| "> #{l}" }.join("")
@@ -476,6 +494,40 @@ module SlackBot
       first_line = not_args.join(" ")
       message_body = [first_line, rest_lines].join("\n").strip
       [options, message_body]
+    end
+
+    private def process_regulation_rag_message(channel, user, ts, thread_ts, text)
+      return unless text =~ /^<@#{bot_id}>\s+/
+
+      logger.info "process_regulation_rag_message: channel=#{channel.slack_id}, user=#{user.slack_id}, ts=#{ts}, thread_ts=#{thread_ts}, text=#{text}"
+      message_body = Regexp.last_match.post_match
+      options, message_body = process_regulation_rag_options(message_body)
+      logger.info "process_regulation_rag_message: options=#{options}"
+      return if options.nil?
+
+      # No options now
+      # begin
+      #   options.validate!
+      # rescue MagellanRagQueryJob::InvalidOptionError => error
+      #   logger.warn "process_magellan_rag_message: options.validate! failed"
+      #   reply_as_ephemeral(channel, user, ts, error.message)
+      #   return
+      # end
+
+      # TODO: Insert message into OpenSearch
+      message = Message.create!(
+        conversation: channel,
+        user: user,
+        text: message_body,
+        slack_ts: ts,
+        slack_thread_ts: thread_ts || ts
+      )
+      logger.info "process_magellan_rag_message: message=#{message}"
+      RegulationRagQueryJob.perform_later("message_id" => message.id)
+    end
+
+    private def process_regulation_rag_options(message_body)
+      [true, message_body]  # No options
     end
 
     private def check_command_permission!(channel, user)
